@@ -13,9 +13,6 @@ class SettingsRepository(
         private const val PREF_KEY_HOME_ADDR = "home_address"
 
         const val DEFAULT_PIN = "0000"
-        const val DEFAULT_LAT = 37.5665
-        const val DEFAULT_LNG = 126.9780
-        const val DEFAULT_ADDR = "서울특별시 중구 세종대로 110"
     }
 
     fun getPin(): String {
@@ -30,10 +27,18 @@ class SettingsRepository(
         return getPin() == inputPin
     }
 
-    fun getHomeLocation(): HomeLocation {
-        val lat = sharedPreferences.getFloat(PREF_KEY_HOME_LAT, DEFAULT_LAT.toFloat()).toDouble()
-        val lng = sharedPreferences.getFloat(PREF_KEY_HOME_LNG, DEFAULT_LNG.toFloat()).toDouble()
-        val addr = sharedPreferences.getString(PREF_KEY_HOME_ADDR, DEFAULT_ADDR) ?: DEFAULT_ADDR
+    fun hasHomeLocation(): Boolean {
+        return sharedPreferences.contains(PREF_KEY_HOME_LAT) &&
+                sharedPreferences.contains(PREF_KEY_HOME_LNG)
+    }
+
+    fun getHomeLocation(): HomeLocation? {
+        if (!hasHomeLocation()) {
+            return null
+        }
+        val lat = sharedPreferences.getFloat(PREF_KEY_HOME_LAT, 0f).toDouble()
+        val lng = sharedPreferences.getFloat(PREF_KEY_HOME_LNG, 0f).toDouble()
+        val addr = sharedPreferences.getString(PREF_KEY_HOME_ADDR, "") ?: ""
         return HomeLocation(latitude = lat, longitude = lng, address = addr)
     }
 
@@ -42,6 +47,14 @@ class SettingsRepository(
             .putFloat(PREF_KEY_HOME_LAT, homeLocation.latitude.toFloat())
             .putFloat(PREF_KEY_HOME_LNG, homeLocation.longitude.toFloat())
             .putString(PREF_KEY_HOME_ADDR, homeLocation.address)
+            .apply()
+    }
+
+    fun clearHomeLocation() {
+        sharedPreferences.edit()
+            .remove(PREF_KEY_HOME_LAT)
+            .remove(PREF_KEY_HOME_LNG)
+            .remove(PREF_KEY_HOME_ADDR)
             .apply()
     }
 }

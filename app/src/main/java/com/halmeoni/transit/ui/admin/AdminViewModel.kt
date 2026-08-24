@@ -9,9 +9,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 data class AdminSettings(
-    val homeAddress: String = "서울특별시 중구 세종대로 110",
-    val homeLat: Double = 37.5665,
-    val homeLng: Double = 126.9780,
+    val homeAddress: String = "",
+    val homeLat: Double = 0.0,
+    val homeLng: Double = 0.0,
+    val isHomeConfigured: Boolean = false,
     val pin: String = "0000",
     val apiCallCount: Int = 0
 )
@@ -35,14 +36,14 @@ class AdminViewModel(
 
     fun loadSettings() {
         val home = settingsRepository?.getHomeLocation()
-            ?: HomeLocation(37.5665, 126.9780, "서울특별시 중구 세종대로 110")
         val currentPin = settingsRepository?.getPin() ?: "0000"
         val count = apiUsageTracker?.getUsageCount() ?: 0
 
         _settings.value = AdminSettings(
-            homeAddress = home.address,
-            homeLat = home.latitude,
-            homeLng = home.longitude,
+            homeAddress = home?.address ?: "집 위치 미설정",
+            homeLat = home?.latitude ?: 0.0,
+            homeLng = home?.longitude ?: 0.0,
+            isHomeConfigured = home != null,
             pin = currentPin,
             apiCallCount = count
         )
@@ -74,7 +75,12 @@ class AdminViewModel(
 
     fun updateHomeSettings(address: String, lat: Double, lng: Double) {
         settingsRepository?.saveHomeLocation(HomeLocation(lat, lng, address))
-        _settings.value = _settings.value.copy(homeAddress = address, homeLat = lat, homeLng = lng)
+        _settings.value = _settings.value.copy(
+            homeAddress = address,
+            homeLat = lat,
+            homeLng = lng,
+            isHomeConfigured = true
+        )
     }
 
     fun updatePin(newPin: String) {

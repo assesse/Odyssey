@@ -55,12 +55,23 @@ class DestinationRepository(
     fun getDestinations(): List<Destination> {
         val json = sharedPreferences.getString(PREF_KEY_DESTINATIONS, null)
         if (json.isNullOrEmpty()) {
-            saveAll(DEFAULT_DESTINATIONS)
-            return DEFAULT_DESTINATIONS
+            return emptyList()
         }
         val type = object : TypeToken<List<Destination>>() {}.type
-        val list: List<Destination>? = gson.fromJson(json, type)
-        return list?.sortedBy { it.order } ?: DEFAULT_DESTINATIONS
+        val list: List<Destination>? = try {
+            gson.fromJson(json, type)
+        } catch (e: Exception) {
+            null
+        }
+        return list?.sortedBy { it.order } ?: emptyList()
+    }
+
+    fun getDestinationById(id: String): Destination? {
+        return getDestinations().firstOrNull { it.id == id }
+    }
+
+    fun hasDestinations(): Boolean {
+        return getDestinations().isNotEmpty()
     }
 
     fun saveDestination(destination: Destination) {

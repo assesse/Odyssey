@@ -14,10 +14,13 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.google.android.gms.location.LocationServices
 import com.halmeoni.transit.data.api.OdsayApiService
+import com.halmeoni.transit.data.location.FusedLocationProvider
 import com.halmeoni.transit.data.location.LocationProvider
 import com.halmeoni.transit.data.repository.DestinationRepository
+import com.halmeoni.transit.data.repository.OdsayRouteRepository
 import com.halmeoni.transit.data.repository.SettingsRepository
 import com.halmeoni.transit.domain.ApiUsageTracker
+import com.halmeoni.transit.domain.model.RouteRequest
 import com.halmeoni.transit.ui.admin.AdminScreen
 import com.halmeoni.transit.ui.admin.AdminViewModel
 import com.halmeoni.transit.ui.admin.PinInputScreen
@@ -34,24 +37,28 @@ import java.util.concurrent.TimeUnit
 
 object Routes {
     const val HOME = "home"
-    const val CONFIRM = "confirm/{destinationName}"
-    const val ROUTE = "route/{destinationName}"
+    const val CONFIRM_DESTINATION = "confirm/destination/{destinationId}"
+    const val CONFIRM_HOME = "confirm/home"
+    const val ROUTE_DESTINATION = "route/destination/{destinationId}"
+    const val ROUTE_HOME = "route/home"
     const val PIN_INPUT = "pin_input"
     const val ADMIN = "admin"
 
-    fun buildConfirmRoute(destinationName: String) = "confirm/$destinationName"
-    fun buildRouteRoute(destinationName: String) = "route/$destinationName"
+    fun buildConfirmDestination(destinationId: String) = "confirm/destination/$destinationId"
+    fun buildConfirmHome() = CONFIRM_HOME
+    fun buildRouteDestination(destinationId: String) = "route/destination/$destinationId"
+    fun buildRouteHome() = ROUTE_HOME
 }
 
 class AppViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
     private val sharedPrefs by lazy {
         context.getSharedPreferences("halmeoni_transit_prefs", Context.MODE_PRIVATE)
     }
-    private val destinationRepository by lazy { DestinationRepository(sharedPrefs) }
-    private val settingsRepository by lazy { SettingsRepository(sharedPrefs) }
-    private val apiUsageTracker by lazy { ApiUsageTracker(sharedPrefs) }
-    private val locationProvider by lazy {
-        LocationProvider(context, LocationServices.getFusedLocationProviderClient(context))
+    val destinationRepository by lazy { DestinationRepository(sharedPrefs) }
+    val settingsRepository by lazy { SettingsRepository(sharedPrefs) }
+    val apiUsageTracker by lazy { ApiUsageTracker(sharedPrefs) }
+    val locationProvider by lazy {
+        FusedLocationProvider(context, LocationServices.getFusedLocationProviderClient(context))
     }
 
     private val odsayApiService by lazy {
@@ -69,6 +76,10 @@ class AppViewModelFactory(private val context: Context) : ViewModelProvider.Fact
             .create(OdsayApiService::class.java)
     }
 
+    val routeRepository by lazy {
+        OdsayRouteRepository(odsayApiService)
+    }
+
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         return when {
@@ -77,7 +88,7 @@ class AppViewModelFactory(private val context: Context) : ViewModelProvider.Fact
             }
             modelClass.isAssignableFrom(RouteViewModel::class.java) -> {
                 RouteViewModel(
-                    odsayApiService = odsayApiService,
+                    routeRepository = routeRepository,
                     locationProvider = locationProvider,
                     destinationRepository = destinationRepository,
                     settingsRepository = settingsRepository,
@@ -111,10 +122,10 @@ fun AppNavigation(
             HomeScreen(
                 viewModel = homeViewModel,
                 onSelectDestination = { dest ->
-                    navController.navigate(Routes.buildConfirmRoute(dest.displayName))
+                    navController.navigate(Routes.buildConfirmDestination(dest.id))
                 },
                 onGoHomeSelected = {
-                    navController.navigate(Routes.buildConfirmRoute("우리 집"))
+                    navController.navigate(Routes.buildConfirmHome())
                 },
                 onNavigateToPin = {
                     navController.navigate(Routes.PIN_INPUT)
@@ -123,14 +134,32 @@ fun AppNavigation(
         }
 
         composable(
-            route = Routes.CONFIRM,
-            arguments = listOf(navArgument("destinationName") { type = NavType.StringType })
+            route = Routes.CONFIRM_DESTINATION,
+            arguments = listOf(navArgument("destinationId") { type = NavType.StringType })
         ) { backStackEntry ->
-            val destinationName = backStackEntry.arguments?.getString("destinationName") ?: ""
+            val destinationId = backStackEntry.arguments?.getString("destinationId") ?: ""
+            val destination = factory.destinationRepository.getDestinationById(destinationId)
+            val displayName = destination?.displayName ?: "목적지"
+
             ConfirmScreen(
-                destinationName = destinationName,
+                destinationName = displayName,
                 onConfirm = {
-                    navController.navigate(Routes.buildRouteRoute(destinationName))
+                    navController.navigate(Routes.buildRouteDestination(destinationId))
+                },
+                onCancel = {
+                    navController.popBackStack()
+                },
+                onGoHome = {
+                    navController.popBackStack(Routes.HOME, inclusive = false)
+                }
+            )
+        }
+
+        composable(Routes.CONFIRM_HOME) {
+            ConfirmScreen(
+                destinationName = "우리 집",
+                onConfirm = {
+                    navController.navigate(Routes.buildRouteHome())
                 },
                 onCancel = {
                     navController.popBackStack()
@@ -142,18 +171,37 @@ fun AppNavigation(
         }
 
         composable(
-            route = Routes.ROUTE,
-            arguments = listOf(navArgument("destinationName") { type = NavType.StringType })
+            route = Routes.ROUTE_DESTINATION,
+            arguments = listOf(navArgument("destinationId") { type = NavType.StringType })
         ) { backStackEntry ->
-            val destinationName = backStackEntry.arguments?.getString("destinationName") ?: ""
+            val destinationId = backStackEntry.arguments?.getString("destinationId") ?: ""
             RouteScreen(
-                destinationName = destinationName,
+                request = RouteRequest.ToDestination(destinationId),
                 viewModel = routeViewModel,
                 onBack = {
                     navController.popBackStack()
                 },
                 onGoHome = {
                     navController.popBackStack(Routes.HOME, inclusive = false)
+                },
+                onNavigateToAdmin = {
+                    navController.navigate(Routes.PIN_INPUT)
+                }
+            )
+        }
+
+        composable(Routes.ROUTE_HOME) {
+            RouteScreen(
+                request = RouteRequest.GoHome,
+                viewModel = routeViewModel,
+                onBack = {
+                    navController.popBackStack()
+                },
+                onGoHome = {
+                    navController.popBackStack(Routes.HOME, inclusive = false)
+                },
+                onNavigateToAdmin = {
+                    navController.navigate(Routes.PIN_INPUT)
                 }
             )
         }

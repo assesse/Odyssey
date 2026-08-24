@@ -26,12 +26,7 @@ class HomeViewModel(
     }
 
     fun loadDestinations() {
-        val dests = destinationRepository?.getDestinations() ?: listOf(
-            Destination("1", "서울대학교병원", "병원", 37.5796, 126.9990, "hospital", 1),
-            Destination("2", "경동시장", "시장", 37.5804, 127.0385, "market", 2),
-            Destination("3", "종로노인복지관", "복지관", 37.5760, 126.9980, "welfare", 3),
-            Destination("4", "탑골공원", "공원", 37.5712, 126.9882, "park", 4)
-        )
+        val dests = destinationRepository?.getDestinations() ?: emptyList()
         _uiState.value = HomeUiState(destinations = dests)
     }
 

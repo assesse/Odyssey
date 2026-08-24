@@ -84,17 +84,25 @@ fun HomeScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(bottom = 24.dp)
-        ) {
-            items(uiState.destinations) { destination ->
-                BigButton(
-                    text = "${destination.displayName} (${destination.name})",
-                    onClick = { onSelectDestination(destination) },
-                    backgroundColor = MaterialTheme.colorScheme.primary,
-                    minHeight = 88.dp
-                )
+        if (uiState.destinations.isEmpty()) {
+            Text(
+                text = "등록된 목적지가 없어요.\n보호자 설정에서 목적지를 등록해 주세요.",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.outline
+            )
+        } else {
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                contentPadding = PaddingValues(bottom = 24.dp)
+            ) {
+                items(uiState.destinations) { destination ->
+                    BigButton(
+                        text = "${destination.displayName} (${destination.name})",
+                        onClick = { onSelectDestination(destination) },
+                        backgroundColor = MaterialTheme.colorScheme.primary,
+                        minHeight = 88.dp
+                    )
+                }
             }
         }
     }
