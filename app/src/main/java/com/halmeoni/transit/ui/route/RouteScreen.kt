@@ -146,3 +146,101 @@ fun RouteScreen(
         }
     }
 }
+
+@Composable
+fun StepCard(stepNumber: Int, step: RouteStep) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            val icon = when (step.type) {
+                StepType.BUS -> "🚌"
+                StepType.SUBWAY -> "🚇"
+                StepType.WALK -> "🚶"
+            }
+
+            Box(
+                modifier = Modifier
+                    .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp))
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+            ) {
+                Text(
+                    text = "${stepNumber}단계",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = Color.White
+                )
+            }
+
+            Spacer(modifier = Modifier.padding(8.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "$icon ${step.stepName}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+
+                when (step.type) {
+                    StepType.BUS -> {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        if (step.startName.isNotBlank()) {
+                            Text(text = "탑승 정류장: ${step.startName}", style = MaterialTheme.typography.bodyLarge)
+                        }
+                        if (!step.routeName.isNullOrBlank()) {
+                            Text(text = "버스 번호: ${step.routeName}", style = MaterialTheme.typography.bodyLarge)
+                        }
+                        if (step.endName.isNotBlank()) {
+                            val stopInfo = if (step.stationCount > 0) " (${step.stationCount}개 정거장)" else ""
+                            Text(
+                                text = "하차 정류장: ${step.endName}$stopInfo",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                    StepType.SUBWAY -> {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        if (step.startName.isNotBlank()) {
+                            Text(text = "탑승역: ${step.startName}", style = MaterialTheme.typography.bodyLarge)
+                        }
+                        if (!step.routeName.isNullOrBlank()) {
+                            Text(text = "노선명: ${step.routeName}", style = MaterialTheme.typography.bodyLarge)
+                        }
+                        if (step.endName.isNotBlank()) {
+                            val stopInfo = if (step.stationCount > 0) " (${step.stationCount}개 정거장)" else ""
+                            Text(
+                                text = "하차역: ${step.endName}$stopInfo",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                    StepType.WALK -> {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        if (step.startName.isNotBlank() && step.endName.isNotBlank()) {
+                            Text(text = "이동: ${step.startName} → ${step.endName}", style = MaterialTheme.typography.bodyLarge)
+                        }
+                        val timeOrDist = buildString {
+                            if (step.sectionTime > 0) append("${step.sectionTime}분")
+                            if (step.distance > 0) {
+                                if (isNotEmpty()) append(" / ")
+                                append("${step.distance}m")
+                            }
+                        }
+                        if (timeOrDist.isNotBlank()) {
+                            Text(text = timeOrDist, style = MaterialTheme.typography.bodyLarge)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
