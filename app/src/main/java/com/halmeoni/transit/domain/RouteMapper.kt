@@ -95,7 +95,9 @@ class RouteMapper {
             endName = subPath.endName ?: "",
             routeName = routeName,
             stationCount = subPath.stationCount ?: 0,
-            passStops = passStops
+            passStops = passStops,
+            lineType = firstLane?.type,
+            subwayCode = firstLane?.subwayCode
         )
     }
 }

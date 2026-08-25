@@ -16,5 +16,7 @@ data class RouteStep(
     val endName: String = "",
     val routeName: String? = null,
     val stationCount: Int = 0,
-    val passStops: List<String> = emptyList()
+    val passStops: List<String> = emptyList(),
+    val lineType: Int? = null,
+    val subwayCode: Int? = null
 )
