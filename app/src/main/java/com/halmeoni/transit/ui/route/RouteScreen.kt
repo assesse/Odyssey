@@ -271,6 +271,7 @@ fun StepCard(stepNumber: Int, step: RouteStep) {
                 StepType.BUS -> "🚌"
                 StepType.SUBWAY -> "🚇"
                 StepType.WALK -> "🚶"
+                StepType.UNKNOWN -> "❓"
             }
 
             Box(
@@ -340,12 +341,16 @@ fun StepCard(stepNumber: Int, step: RouteStep) {
                             if (step.sectionTime > 0) append("${step.sectionTime}분")
                             if (step.distance > 0) {
                                 if (isNotEmpty()) append(" / ")
-                                append("${step.distance}m")
+                                append("${Math.round(step.distance)}m")
                             }
                         }
                         if (timeOrDist.isNotBlank()) {
                             Text(text = timeOrDist, style = MaterialTheme.typography.bodyLarge)
                         }
+                    }
+                    StepType.UNKNOWN -> {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(text = "이동 정보 확인 필요", style = MaterialTheme.typography.bodyLarge)
                     }
                 }
             }

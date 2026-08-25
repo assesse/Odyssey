@@ -1,14 +1,72 @@
 package com.halmeoni.transit.data.api
 
+import com.google.gson.JsonDeserializationContext
+import com.google.gson.JsonDeserializer
+import com.google.gson.JsonElement
 import com.google.gson.annotations.SerializedName
+import java.lang.reflect.Type
 
 data class OdsayResponse(
-    @SerializedName("result") val result: OdsayResult? = null
+    @SerializedName("result") val result: OdsayResult? = null,
+    @SerializedName("error") val error: List<OdsayErrorItem>? = null
 )
+
+data class OdsayErrorItem(
+    @SerializedName("code") val code: String? = null,
+    @SerializedName("msg") val msg: String? = null,
+    @SerializedName("message") val message: String? = null
+) {
+    val displayMessage: String?
+        get() = msg ?: message
+}
+
+class OdsayResponseDeserializer : JsonDeserializer<OdsayResponse> {
+    override fun deserialize(
+        json: JsonElement,
+        typeOfT: Type,
+        context: JsonDeserializationContext
+    ): OdsayResponse {
+        if (!json.isJsonObject) {
+            return OdsayResponse()
+        }
+        val jsonObject = json.asJsonObject
+
+        val result = if (jsonObject.has("result") && !jsonObject.get("result").isJsonNull) {
+            context.deserialize<OdsayResult>(jsonObject.get("result"), OdsayResult::class.java)
+        } else {
+            null
+        }
+
+        val errors = mutableListOf<OdsayErrorItem>()
+        if (jsonObject.has("error") && !jsonObject.get("error").isJsonNull) {
+            val errorElement = jsonObject.get("error")
+            if (errorElement.isJsonArray) {
+                for (item in errorElement.asJsonArray) {
+                    if (item.isJsonObject) {
+                        errors.add(context.deserialize(item, OdsayErrorItem::class.java))
+                    }
+                }
+            } else if (errorElement.isJsonObject) {
+                errors.add(context.deserialize(errorElement, OdsayErrorItem::class.java))
+            }
+        }
+
+        return OdsayResponse(
+            result = result,
+            error = if (errors.isEmpty()) null else errors
+        )
+    }
+}
 
 data class OdsayResult(
     @SerializedName("searchType") val searchType: Int? = null,
-    @SerializedName("outTrafficDay") val outTrafficDay: Int? = null,
+    @SerializedName("outTrafficCheck") val outTrafficCheck: Int? = null,
+    @SerializedName("busCount") val busCount: Int? = null,
+    @SerializedName("subwayCount") val subwayCount: Int? = null,
+    @SerializedName("subwayBusCount") val subwayBusCount: Int? = null,
+    @SerializedName("pointDistance") val pointDistance: Double? = null,
+    @SerializedName("startRadius") val startRadius: Int? = null,
+    @SerializedName("endRadius") val endRadius: Int? = null,
     @SerializedName("path") val path: List<OdsayPath>? = null
 )
 
@@ -19,7 +77,7 @@ data class OdsayPath(
 )
 
 data class OdsayPathInfo(
-    @SerializedName("trafficDistance") val trafficDistance: Int? = null,
+    @SerializedName("trafficDistance") val trafficDistance: Double? = null,
     @SerializedName("totalWalk") val totalWalk: Int? = null,
     @SerializedName("totalTime") val totalTime: Int? = null,
     @SerializedName("payment") val payment: Int? = null,
@@ -28,12 +86,13 @@ data class OdsayPathInfo(
     @SerializedName("mapObj") val mapObj: String? = null,
     @SerializedName("firstStartStation") val firstStartStation: String? = null,
     @SerializedName("lastEndStation") val lastEndStation: String? = null,
-    @SerializedName("totalStationCount") val totalStationCount: Int? = null
+    @SerializedName("totalStationCount") val totalStationCount: Int? = null,
+    @SerializedName("totalDistance") val totalDistance: Double? = null
 )
 
 data class OdsaySubPath(
     @SerializedName("trafficType") val trafficType: Int? = null, // 1: 지하철, 2: 버스, 3: 도보
-    @SerializedName("distance") val distance: Int? = null,
+    @SerializedName("distance") val distance: Double? = null,
     @SerializedName("sectionTime") val sectionTime: Int? = null,
     @SerializedName("stationCount") val stationCount: Int? = null,
     @SerializedName("startName") val startName: String? = null,

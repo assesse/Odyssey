@@ -3,7 +3,9 @@ package com.halmeoni.transit
 import com.halmeoni.transit.data.location.LocationProvider
 import com.halmeoni.transit.data.repository.DestinationRepository
 import com.halmeoni.transit.data.repository.RouteRepository
+import com.halmeoni.transit.data.repository.RouteRepositoryError
 import com.halmeoni.transit.data.repository.SettingsRepository
+import com.halmeoni.transit.data.repository.TransitRouteResult
 import com.halmeoni.transit.domain.ApiUsageTracker
 import com.halmeoni.transit.domain.RouteSelector
 import com.halmeoni.transit.domain.model.Destination
@@ -36,7 +38,7 @@ class FakeRouteRepository : RouteRepository {
     var lastEndLng: Double? = null
     var callCount = 0
 
-    var returnResult: Result<List<TransitRoute>> = Result.success(emptyList())
+    var returnResult: TransitRouteResult = TransitRouteResult.Success(emptyList())
     var delayMs: Long = 0L
 
     override suspend fun getTransitRoutes(
@@ -44,7 +46,7 @@ class FakeRouteRepository : RouteRepository {
         startLng: Double,
         endLat: Double,
         endLng: Double
-    ): Result<List<TransitRoute>> {
+    ): TransitRouteResult {
         callCount++
         lastStartLat = startLat
         lastStartLng = startLng
@@ -133,14 +135,14 @@ class RouteViewModelTest {
             id = "r1",
             totalTime = 30,
             totalWalkDistance = 200,
-            totalDistance = 5000,
+            totalDistance = 5000.0,
             transferCount = 0,
             payment = 1400,
             firstStartStation = "강남역",
             lastEndStation = "혜화역",
             steps = emptyList()
         )
-        fakeRouteRepo.returnResult = Result.success(listOf(sampleRoute))
+        fakeRouteRepo.returnResult = TransitRouteResult.Success(listOf(sampleRoute))
 
         val viewModel = createViewModel()
         viewModel.loadRoute(RouteRequest.ToDestination(testHospital.id))
@@ -166,14 +168,14 @@ class RouteViewModelTest {
             id = "r2",
             totalTime = 25,
             totalWalkDistance = 150,
-            totalDistance = 4000,
+            totalDistance = 4000.0,
             transferCount = 0,
             payment = 1400,
             firstStartStation = "마포역",
             lastEndStation = "강남역",
             steps = emptyList()
         )
-        fakeRouteRepo.returnResult = Result.success(listOf(sampleRoute))
+        fakeRouteRepo.returnResult = TransitRouteResult.Success(listOf(sampleRoute))
 
         val viewModel = createViewModel()
         viewModel.loadRoute(RouteRequest.GoHome)
@@ -223,7 +225,7 @@ class RouteViewModelTest {
     fun apiKeyNotConfigured_doesNotReturnSampleRoute_andReturnsConfigurationError() = runTest {
         settingsRepo.saveHomeLocation(testHome)
         destRepo.saveDestination(testHospital)
-        fakeRouteRepo.returnResult = Result.failure(IllegalStateException("ODSAY_API_KEY_NOT_CONFIGURED"))
+        fakeRouteRepo.returnResult = TransitRouteResult.Failure(RouteRepositoryError.ApiKeyNotConfigured)
 
         val viewModel = createViewModel()
         viewModel.loadRoute(RouteRequest.ToDestination(testHospital.id))
@@ -281,14 +283,14 @@ class RouteViewModelTest {
             id = "r3",
             totalTime = 20,
             totalWalkDistance = 100,
-            totalDistance = 3000,
+            totalDistance = 3000.0,
             transferCount = 0,
             payment = 1400,
             firstStartStation = "출발지",
             lastEndStation = "도착지",
             steps = emptyList()
         )
-        fakeRouteRepo.returnResult = Result.success(listOf(sampleRoute))
+        fakeRouteRepo.returnResult = TransitRouteResult.Success(listOf(sampleRoute))
 
         val viewModel = createViewModel()
 
@@ -327,14 +329,14 @@ class RouteViewModelTest {
             id = "r1",
             totalTime = 30,
             totalWalkDistance = 200,
-            totalDistance = 5000,
+            totalDistance = 5000.0,
             transferCount = 0,
             payment = 1400,
             firstStartStation = "강남역",
             lastEndStation = "혜화역",
             steps = emptyList()
         )
-        fakeRouteRepo.returnResult = Result.success(listOf(sampleRoute))
+        fakeRouteRepo.returnResult = TransitRouteResult.Success(listOf(sampleRoute))
 
         // Pre-increment usage to 35
         for (i in 1..35) {

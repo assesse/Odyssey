@@ -66,16 +66,26 @@ class AppViewModelFactory(private val context: Context) : ViewModelProvider.Fact
             .readTimeout(15, TimeUnit.SECONDS)
             .build()
 
+        val gson = com.google.gson.GsonBuilder()
+            .registerTypeAdapter(
+                com.halmeoni.transit.data.api.OdsayResponse::class.java,
+                com.halmeoni.transit.data.api.OdsayResponseDeserializer()
+            )
+            .create()
+
         Retrofit.Builder()
             .baseUrl("https://api.odsay.com/")
             .client(okHttpClient)
-            .addConverterFactory(GsonConverterFactory.create())
+            .addConverterFactory(GsonConverterFactory.create(gson))
             .build()
             .create(OdsayApiService::class.java)
     }
 
     val routeRepository by lazy {
-        OdsayRouteRepository(odsayApiService)
+        OdsayRouteRepository(
+            apiService = odsayApiService,
+            apiUsageTracker = apiUsageTracker
+        )
     }
 
     @Suppress("UNCHECKED_CAST")

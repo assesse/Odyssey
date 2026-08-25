@@ -10,39 +10,28 @@ data class RouteSelectionResult(
 class RouteSelector {
 
     /**
-     * 점수 산정 공식:
-     * (환승 횟수 * 1000) + (총 도보 거리m * 2) + (총 소요시간분 * 10)
-     */
-    fun calculateScore(route: TransitRoute): Int {
-        return (route.transferCount * 1000) + (route.totalWalkDistance * 2) + (route.totalTime * 10)
-    }
-
-    /**
-     * 조건:
-     * - 환승 2회 초과 제외 (transferCount <= 2만 허용)
-     * - 총 도보 1km 초과 제외 (totalWalkDistance <= 1000m 만 허용)
-     * - 최적 경로 1개 (가장 낮은 점수) 및 대체 경로 목록 반환
+     * 고령 사용자 맞춤 우선순위 정렬:
+     * 1. 환승 횟수가 적은 경로 (0회 환승 > 1회 환승 > 2회 환승 ...)
+     * 2. 환승 횟수가 같으면 도보 거리가 짧은 경로
+     * 3. 도보 거리도 같으면 총 소요시간이 짧은 경로
+     * 4. 모두 같으면 결정적 ID 순서
+     *
+     * (하드 필터를 두지 않아 정상 경로를 무조건 삭제하지 않음)
      */
     fun selectRoutes(routes: List<TransitRoute>): RouteSelectionResult {
-        val validRoutes = routes.filter { route ->
-            route.transferCount <= 2 && route.totalWalkDistance <= 1000
-        }
-
-        if (validRoutes.isEmpty()) {
+        if (routes.isEmpty()) {
             return RouteSelectionResult(bestRoute = null, alternativeRoutes = emptyList())
         }
 
-        val scoredRoutes = validRoutes.map { route ->
-            route.copy(score = calculateScore(route))
-        }.sortedWith(
-            compareBy<TransitRoute> { it.score }
-                .thenBy { it.transferCount }
+        val sortedRoutes = routes.sortedWith(
+            compareBy<TransitRoute> { it.transferCount }
                 .thenBy { it.totalWalkDistance }
                 .thenBy { it.totalTime }
+                .thenBy { it.id }
         )
 
-        val bestRoute = scoredRoutes.first()
-        val alternativeRoutes = scoredRoutes.drop(1)
+        val bestRoute = sortedRoutes.first()
+        val alternativeRoutes = sortedRoutes.drop(1)
 
         return RouteSelectionResult(bestRoute, alternativeRoutes)
     }
