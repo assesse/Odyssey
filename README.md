@@ -2,6 +2,10 @@
 
 고령 사용자를 위한 단순하고 직관적인 맞춤형 대중교통(버스·지하철) 길찾기 Android 애플리케이션입니다.
 
+[![Download APK](https://img.shields.io/badge/Download-APK-brightgreen?style=for-the-badge&logo=android)](https://github.com/assesse/Odyssey/releases/latest)
+
+> 📲 **스마트폰에서 바로 다운로드하기**: [최신 릴리스 다운로드 페이지 (v1.0.0)](https://github.com/assesse/Odyssey/releases/tag/v1.0.0) 또는 [Odyssey-debug.apk 직접 다운로드](https://github.com/assesse/Odyssey/releases/download/v1.0.0/Odyssey-debug.apk)
+
 ---
 
 ## 1. 앱 주요 특징
