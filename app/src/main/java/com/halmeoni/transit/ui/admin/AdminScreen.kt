@@ -25,6 +25,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -77,23 +78,22 @@ fun AdminScreen(
                     ) {
                         Text(
                             text = "🏠 집 위치 설정",
-                            style = MaterialTheme.typography.titleLarge,
+                            style = MaterialTheme.typography.titleMedium.copy(fontSize = 20.sp),
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
                         )
-                        if (settings.isHomeConfigured) {
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = if (settings.isHomeConfigured) Color(0xFFE8F5E9) else Color(0xFFFFEBEE)
+                        ) {
                             Text(
-                                text = "🟢 등록 완료",
-                                style = MaterialTheme.typography.bodyMedium,
+                                text = if (settings.isHomeConfigured) "● 등록 완료" else "● 미등록",
+                                style = MaterialTheme.typography.labelLarge.copy(fontSize = 13.sp),
                                 fontWeight = FontWeight.Bold,
-                                color = HomeButtonGreen
-                            )
-                        } else {
-                            Text(
-                                text = "🔴 미등록",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = ActionRed
+                                color = if (settings.isHomeConfigured) HomeButtonGreen else ActionRed,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                maxLines = 1,
+                                softWrap = false
                             )
                         }
                     }
@@ -155,19 +155,10 @@ fun AdminScreen(
                     ) {
                         Text(
                             text = "📍 고정 목적지 (${settings.destinations.size}/6)",
-                            style = MaterialTheme.typography.titleLarge,
+                            style = MaterialTheme.typography.titleMedium.copy(fontSize = 20.sp),
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
                         )
-
-                        if (settings.destinations.size < 6) {
-                            Button(
-                                onClick = { viewModel.openAddDestinationDialog() },
-                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                            ) {
-                                Text("➕ 목적지 추가")
-                            }
-                        }
                     }
 
                     if (settings.destGeneralError != null) {
@@ -183,7 +174,7 @@ fun AdminScreen(
 
                     if (settings.destinations.isEmpty()) {
                         Text(
-                            text = "등록된 목적지가 없어요. 상단의 '➕ 목적지 추가' 버튼을 눌러 등록해 주세요.",
+                            text = "등록된 목적지가 없어요. 아래 '➕ 새 목적지 추가' 버튼을 눌러 등록해 주세요.",
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.outline
                         )
@@ -201,21 +192,21 @@ fun AdminScreen(
                                         .fillMaxWidth()
                                         .padding(14.dp)
                                 ) {
-                                    // 1단: 목적지 이름 및 상세 정보 (전체 가로폭 확보하여 글자 찌그러짐 방지)
+                                    // 1단: 목적지 이름 및 상세 정보 (전체 가로폭 확보)
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text(
                                             text = "${index + 1}. ${dest.displayName}",
-                                            style = MaterialTheme.typography.titleLarge,
+                                            style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp),
                                             fontWeight = FontWeight.Bold,
                                             color = MaterialTheme.colorScheme.primary
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Text(
                                             text = "(${dest.name})",
-                                            style = MaterialTheme.typography.titleMedium,
+                                            style = MaterialTheme.typography.titleMedium.copy(fontSize = 17.sp),
                                             color = Color.DarkGray
                                         )
                                     }
@@ -273,6 +264,25 @@ fun AdminScreen(
                             }
                         }
                     }
+
+                    // ➕ 새 목적지 추가 버튼 (전체 가로폭으로 시원하게 배치하여 세로 기둥 방지)
+                    if (settings.destinations.size < 6) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Button(
+                            onClick = { viewModel.openAddDestinationDialog() },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(52.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(
+                                text = "➕ 새 목적지 추가",
+                                style = MaterialTheme.typography.titleMedium.copy(fontSize = 17.sp),
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
                 }
             }
 
@@ -290,23 +300,22 @@ fun AdminScreen(
                     ) {
                         Text(
                             text = "🌐 ODsay API 키 설정",
-                            style = MaterialTheme.typography.titleLarge,
+                            style = MaterialTheme.typography.titleMedium.copy(fontSize = 20.sp),
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
                         )
-                        if (settings.isApiKeyConfigured) {
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = if (settings.isApiKeyConfigured) Color(0xFFE8F5E9) else Color(0xFFFFEBEE)
+                        ) {
                             Text(
-                                text = "🟢 키 설정됨",
-                                style = MaterialTheme.typography.bodyMedium,
+                                text = if (settings.isApiKeyConfigured) "● 키 설정됨" else "● 키 미설정",
+                                style = MaterialTheme.typography.labelLarge.copy(fontSize = 13.sp),
                                 fontWeight = FontWeight.Bold,
-                                color = HomeButtonGreen
-                            )
-                        } else {
-                            Text(
-                                text = "🔴 키 미설정",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = ActionRed
+                                color = if (settings.isApiKeyConfigured) HomeButtonGreen else ActionRed,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                maxLines = 1,
+                                softWrap = false
                             )
                         }
                     }
@@ -340,7 +349,7 @@ fun AdminScreen(
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
                         text = "🔒 비밀번호 (PIN) 변경",
-                        style = MaterialTheme.typography.titleLarge,
+                        style = MaterialTheme.typography.titleMedium.copy(fontSize = 20.sp),
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -397,7 +406,7 @@ fun AdminScreen(
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
                         text = "📊 API 사용 통계",
-                        style = MaterialTheme.typography.titleLarge,
+                        style = MaterialTheme.typography.titleMedium.copy(fontSize = 20.sp),
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
                     )
