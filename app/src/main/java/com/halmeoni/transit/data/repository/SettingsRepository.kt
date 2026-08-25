@@ -1,6 +1,7 @@
 package com.halmeoni.transit.data.repository
 
 import android.content.SharedPreferences
+import com.halmeoni.transit.BuildConfig
 import com.halmeoni.transit.domain.model.HomeLocation
 
 class SettingsRepository(
@@ -11,6 +12,7 @@ class SettingsRepository(
         private const val PREF_KEY_HOME_LAT = "home_latitude"
         private const val PREF_KEY_HOME_LNG = "home_longitude"
         private const val PREF_KEY_HOME_ADDR = "home_address"
+        private const val PREF_KEY_CUSTOM_API_KEY = "custom_odsay_api_key"
 
         const val DEFAULT_PIN = "1234"
     }
@@ -56,5 +58,24 @@ class SettingsRepository(
             .remove(PREF_KEY_HOME_LNG)
             .remove(PREF_KEY_HOME_ADDR)
             .apply()
+    }
+
+    fun getApiKey(): String {
+        val customKey = sharedPreferences.getString(PREF_KEY_CUSTOM_API_KEY, "")?.trim() ?: ""
+        if (customKey.isNotBlank() && customKey != "PLACEHOLDER_KEY" && customKey != "PLACEHOLDER_ODSAY_API_KEY") {
+            return customKey
+        }
+        val buildKey = BuildConfig.ODSAY_API_KEY.trim()
+        return if (buildKey != "PLACEHOLDER_KEY" && buildKey != "PLACEHOLDER_ODSAY_API_KEY") buildKey else ""
+    }
+
+    fun saveApiKey(apiKey: String) {
+        sharedPreferences.edit()
+            .putString(PREF_KEY_CUSTOM_API_KEY, apiKey.trim())
+            .apply()
+    }
+
+    fun isApiKeyConfigured(): Boolean {
+        return getApiKey().isNotBlank()
     }
 }

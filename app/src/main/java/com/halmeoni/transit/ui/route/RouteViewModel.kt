@@ -202,9 +202,11 @@ class RouteViewModel(
 
     private fun mapRepositoryErrorToUi(error: RouteRepositoryError): Pair<RouteErrorType, String> {
         return when (error) {
-            is RouteRepositoryError.ApiKeyNotConfigured,
+            is RouteRepositoryError.ApiKeyNotConfigured -> {
+                RouteErrorType.CONFIGURATION_REQUIRED to "대중교통 길찾기 API 키가 설정되지 않았어요.\n보호자 설정에서 ODsay API 키를 등록해 주세요."
+            }
             is RouteRepositoryError.AuthenticationFailed -> {
-                RouteErrorType.CONFIGURATION_REQUIRED to "길찾기 설정이 완료되지 않았어요.\n보호자에게 알려 주세요."
+                RouteErrorType.CONFIGURATION_REQUIRED to "대중교통 API 키 인증에 실패했어요.\n보호자 설정에서 키를 다시 확인해 주세요."
             }
             is RouteRepositoryError.NoStartStation -> {
                 RouteErrorType.ROUTE_NOT_FOUND to "출발지 근처에서 이용할 수 있는\n버스나 지하철을 찾지 못했어요."

@@ -37,6 +37,11 @@ data class AdminSettingsState(
     val destLngError: String? = null,
     val destGeneralError: String? = null,
 
+    // ODsay API Key
+    val apiKeyInput: String = "",
+    val isApiKeyConfigured: Boolean = false,
+    val apiKeyError: String? = null,
+
     // PIN change fields
     val newPinInput: String = "",
     val confirmPinInput: String = "",
@@ -70,6 +75,8 @@ class AdminViewModel(
         val home = settingsRepository.getHomeLocation()
         val dests = destinationRepository.getDestinations()
         val count = apiUsageTracker.getUsageCount()
+        val apiKey = settingsRepository.getApiKey()
+        val isApiKeyOk = settingsRepository.isApiKeyConfigured()
 
         _settings.value = AdminSettingsState(
             homeAddressInput = home?.address ?: "",
@@ -77,6 +84,8 @@ class AdminViewModel(
             homeLngInput = home?.longitude?.toString() ?: "",
             isHomeConfigured = home != null,
             destinations = dests,
+            apiKeyInput = apiKey,
+            isApiKeyConfigured = isApiKeyOk,
             apiCallCount = count
         )
     }
@@ -133,6 +142,16 @@ class AdminViewModel(
         )
     }
 
+    // --- ODsay API Key Handling ---
+
+    fun onApiKeyChanged(key: String) {
+        _settings.value = _settings.value.copy(
+            apiKeyInput = key,
+            apiKeyError = null,
+            saveErrorMessage = null
+        )
+    }
+
     // --- PIN Change Input Handling ---
 
     fun onNewPinChanged(pin: String) {
@@ -160,7 +179,7 @@ class AdminViewModel(
     fun openAddDestinationDialog() {
         if (_settings.value.destinations.size >= 6) {
             _settings.value = _settings.value.copy(
-                destGeneralError = "목적지는 최대 6개까지만 등록할 수 있어요."
+                destGeneralError = "목적지는 최대 6개까지만 등록할 수 있습니다."
             )
             return
         }
@@ -196,23 +215,38 @@ class AdminViewModel(
     }
 
     fun closeDestinationDialog() {
-        _settings.value = _settings.value.copy(isDestDialogVisible = false)
+        _settings.value = _settings.value.copy(
+            isDestDialogVisible = false,
+            editingDestId = null
+        )
     }
 
-    fun onDestShortNameChanged(value: String) {
-        _settings.value = _settings.value.copy(destShortNameInput = value, destShortNameError = null)
+    fun onDestShortNameChanged(name: String) {
+        _settings.value = _settings.value.copy(
+            destShortNameInput = name,
+            destShortNameError = null
+        )
     }
 
-    fun onDestFullNameChanged(value: String) {
-        _settings.value = _settings.value.copy(destFullNameInput = value, destFullNameError = null)
+    fun onDestFullNameChanged(name: String) {
+        _settings.value = _settings.value.copy(
+            destFullNameInput = name,
+            destFullNameError = null
+        )
     }
 
-    fun onDestLatChanged(value: String) {
-        _settings.value = _settings.value.copy(destLatInput = value, destLatError = null)
+    fun onDestLatChanged(lat: String) {
+        _settings.value = _settings.value.copy(
+            destLatInput = lat,
+            destLatError = null
+        )
     }
 
-    fun onDestLngChanged(value: String) {
-        _settings.value = _settings.value.copy(destLngInput = value, destLngError = null)
+    fun onDestLngChanged(lng: String) {
+        _settings.value = _settings.value.copy(
+            destLngInput = lng,
+            destLngError = null
+        )
     }
 
     fun saveDestinationFromDialog(): Boolean {
@@ -223,43 +257,43 @@ class AdminViewModel(
         val lngStr = state.destLngInput.trim()
 
         var hasError = false
-        var shortNameErr: String? = null
-        var fullNameErr: String? = null
+        var shortErr: String? = null
+        var fullErr: String? = null
         var latErr: String? = null
         var lngErr: String? = null
 
         if (shortName.isBlank()) {
-            shortNameErr = "짧은 이름을 입력해 주세요. (예: 병원)"
+            shortErr = "표시할 짧은 이름을 입력해 주세요 (예: 병원)"
             hasError = true
         }
 
         if (fullName.isBlank()) {
-            fullNameErr = "실제 장소 이름을 입력해 주세요."
+            fullErr = "상세 명칭을 입력해 주세요 (예: 서울대학교병원)"
             hasError = true
         }
 
         val lat = latStr.toDoubleOrNull()
         if (latStr.isBlank() || lat == null || lat.isNaN() || lat.isInfinite() || lat < -90.0 || lat > 90.0) {
-            latErr = "올바른 위도를 입력해 주세요. (-90 ~ 90)"
+            latErr = "올바른 위도를 입력해 주세요 (-90 ~ 90)"
             hasError = true
         }
 
         val lng = lngStr.toDoubleOrNull()
         if (lngStr.isBlank() || lng == null || lng.isNaN() || lng.isInfinite() || lng < -180.0 || lng > 180.0) {
-            lngErr = "올바른 경도를 입력해 주세요. (-180 ~ 180)"
+            lngErr = "올바른 경도를 입력해 주세요 (-180 ~ 180)"
             hasError = true
         }
 
         if (lat != null && lng != null && lat == 0.0 && lng == 0.0) {
-            latErr = "0.0, 0.0 좌표는 등록할 수 없어요."
-            lngErr = "0.0, 0.0 좌표는 등록할 수 없어요."
+            latErr = "0.0, 0.0 좌표는 등록할 수 없습니다."
+            lngErr = "0.0, 0.0 좌표는 등록할 수 없습니다."
             hasError = true
         }
 
         if (hasError) {
             _settings.value = state.copy(
-                destShortNameError = shortNameErr,
-                destFullNameError = fullNameErr,
+                destShortNameError = shortErr,
+                destFullNameError = fullErr,
                 destLatError = latErr,
                 destLngError = lngErr
             )
@@ -267,21 +301,26 @@ class AdminViewModel(
         }
 
         val currentList = state.destinations.toMutableList()
-        val editingId = state.editingDestId
+        val editId = state.editingDestId
 
-        if (editingId != null) {
-            val idx = currentList.indexOfFirst { it.id == editingId }
-            if (idx >= 0) {
-                currentList[idx] = currentList[idx].copy(
-                    displayName = shortName,
+        if (editId != null) {
+            // Edit existing destination (preserve UUID and order)
+            val index = currentList.indexOfFirst { it.id == editId }
+            if (index != -1) {
+                val existing = currentList[index]
+                val updated = existing.copy(
                     name = fullName,
+                    displayName = shortName,
                     latitude = lat!!,
                     longitude = lng!!
                 )
+                currentList[index] = updated
+                destinationRepository.saveDestination(updated)
             }
         } else {
+            // Add new destination (check max 6 limit)
             if (currentList.size >= 6) {
-                _settings.value = state.copy(destGeneralError = "목적지는 최대 6개까지만 등록할 수 있어요.")
+                _settings.value = state.copy(destGeneralError = "최대 6개까지만 등록할 수 있습니다.")
                 return false
             }
             val newDest = Destination(
@@ -290,13 +329,13 @@ class AdminViewModel(
                 displayName = shortName,
                 latitude = lat!!,
                 longitude = lng!!,
-                icon = "place",
+                icon = "location",
                 order = currentList.size + 1
             )
             currentList.add(newDest)
+            destinationRepository.saveDestination(newDest)
         }
 
-        destinationRepository.updateDestinations(currentList)
         _settings.value = state.copy(
             destinations = currentList,
             isDestDialogVisible = false
@@ -335,7 +374,7 @@ class AdminViewModel(
         }
     }
 
-    // --- Save All Settings (Home Location & PIN) ---
+    // --- Save All Settings (Home Location & PIN & API Key) ---
 
     fun saveAllSettings(): Boolean {
         val state = _settings.value
@@ -344,6 +383,7 @@ class AdminViewModel(
         val lngStr = state.homeLngInput.trim()
         val newPin = state.newPinInput.trim()
         val confirmPin = state.confirmPinInput.trim()
+        val apiKey = state.apiKeyInput.trim()
 
         var hasError = false
         var addrErr: String? = null
@@ -351,7 +391,7 @@ class AdminViewModel(
         var lngErr: String? = null
         var pinErr: String? = null
 
-        // 1. Home Location Validation (if any field is provided or if home is required)
+        // 1. Home Location Validation
         val lat = latStr.toDoubleOrNull()
         val lng = lngStr.toDoubleOrNull()
 
@@ -379,13 +419,13 @@ class AdminViewModel(
             hasError = true
         }
 
-        // 2. PIN Validation
+        // 2. PIN Change Validation (optional unless user entered digits)
         if (newPin.isNotEmpty() || confirmPin.isNotEmpty()) {
             if (newPin.length != 4 || !newPin.all { it.isDigit() }) {
-                pinErr = "비밀번호는 숫자 4자리여야 해요."
+                pinErr = "새 PIN은 숫자 4자리여야 합니다."
                 hasError = true
             } else if (newPin != confirmPin) {
-                pinErr = "새 비밀번호와 확인 입력이 일치하지 않아요."
+                pinErr = "새 PIN과 확인 PIN이 일치하지 않습니다."
                 hasError = true
             }
         }
@@ -396,36 +436,35 @@ class AdminViewModel(
                 homeLatError = latErr,
                 homeLngError = lngErr,
                 pinChangeError = pinErr,
-                saveErrorMessage = "입력한 설정값을 다시 확인해 주세요."
+                saveErrorMessage = "입력값을 다시 확인해 주세요."
             )
             return false
         }
 
-        // Persist valid home location
+        // 3. Persist valid settings
         settingsRepository.saveHomeLocation(
-            HomeLocation(
-                latitude = lat!!,
-                longitude = lng!!,
-                address = addr
-            )
+            HomeLocation(latitude = lat!!, longitude = lng!!, address = addr)
         )
 
-        // Persist valid PIN if changed
         if (newPin.isNotEmpty() && newPin == confirmPin) {
             settingsRepository.savePin(newPin)
         }
 
+        if (apiKey.isNotEmpty()) {
+            settingsRepository.saveApiKey(apiKey)
+        }
+
         _settings.value = state.copy(
             isHomeConfigured = true,
-            newPinInput = "",
-            confirmPinInput = "",
+            isApiKeyConfigured = settingsRepository.isApiKeyConfigured(),
             homeAddressError = null,
             homeLatError = null,
             homeLngError = null,
+            newPinInput = "",
+            confirmPinInput = "",
             pinChangeError = null,
             saveErrorMessage = null
         )
-
         return true
     }
 }

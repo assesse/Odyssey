@@ -233,4 +233,20 @@ class AdminViewModelTest {
         assertEquals(1, homeViewModel.uiState.value.destinations.size)
         assertEquals("복지관", homeViewModel.uiState.value.destinations[0].displayName)
     }
+
+    // --- API Key Configuration Test ---
+
+    @Test
+    fun apiKey_saveAndLoad() {
+        assertFalse(settingsRepo.isApiKeyConfigured())
+
+        viewModel.onHomeAddressChanged("집")
+        viewModel.onHomeLatChanged("37.5")
+        viewModel.onHomeLngChanged("127.0")
+        viewModel.onApiKeyChanged("NEW_TEST_KEY_999")
+
+        assertTrue(viewModel.saveAllSettings())
+        assertTrue(settingsRepo.isApiKeyConfigured())
+        assertEquals("NEW_TEST_KEY_999", settingsRepo.getApiKey())
+    }
 }

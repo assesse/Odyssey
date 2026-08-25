@@ -51,4 +51,12 @@ class SettingsRepositoryTest {
         assertFalse(repository.hasHomeLocation())
         assertNull(repository.getHomeLocation())
     }
+
+    @Test
+    fun saveAndGetApiKey_persistsCustomApiKey() {
+        assertFalse(repository.isApiKeyConfigured())
+        repository.saveApiKey("TEST_ODSAY_KEY_12345")
+        assertTrue(repository.isApiKeyConfigured())
+        assertEquals("TEST_ODSAY_KEY_12345", repository.getApiKey())
+    }
 }

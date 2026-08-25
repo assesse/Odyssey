@@ -19,6 +19,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -36,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.halmeoni.transit.ui.components.BigButton
 import com.halmeoni.transit.ui.components.TopBar
 import com.halmeoni.transit.ui.theme.ActionRed
@@ -59,80 +61,9 @@ fun AdminScreen(
                 .padding(paddingValues)
                 .padding(16.dp)
                 .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            if (settings.saveErrorMessage != null) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
-                ) {
-                    Text(
-                        text = "⚠️ ${settings.saveErrorMessage}",
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                        modifier = Modifier.padding(16.dp),
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-
-            // 1. Home Location Settings Card
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "🏠 집 위치 설정",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    OutlinedTextField(
-                        value = settings.homeAddressInput,
-                        onValueChange = { viewModel.onHomeAddressChanged(it) },
-                        modifier = Modifier.fillMaxWidth(),
-                        textStyle = MaterialTheme.typography.bodyLarge,
-                        label = { Text("집 주소 또는 메모") },
-                        isError = settings.homeAddressError != null,
-                        supportingText = settings.homeAddressError?.let { { Text(it) } }
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        OutlinedTextField(
-                            value = settings.homeLatInput,
-                            onValueChange = { viewModel.onHomeLatChanged(it) },
-                            modifier = Modifier.weight(1f),
-                            textStyle = MaterialTheme.typography.bodyLarge,
-                            label = { Text("위도 (Latitude)") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            isError = settings.homeLatError != null,
-                            supportingText = settings.homeLatError?.let { { Text(it) } }
-                        )
-
-                        OutlinedTextField(
-                            value = settings.homeLngInput,
-                            onValueChange = { viewModel.onHomeLngChanged(it) },
-                            modifier = Modifier.weight(1f),
-                            textStyle = MaterialTheme.typography.bodyLarge,
-                            label = { Text("경도 (Longitude)") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            isError = settings.homeLngError != null,
-                            supportingText = settings.homeLngError?.let { { Text(it) } }
-                        )
-                    }
-                }
-            }
-
-            // 2. Destinations Management Card
+            // 1. Home Location Card
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -145,7 +76,85 @@ fun AdminScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "📍 목적지 관리 (${settings.destinations.size}/6)",
+                            text = "🏠 집 위치 설정",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        if (settings.isHomeConfigured) {
+                            Text(
+                                text = "🟢 등록 완료",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = HomeButtonGreen
+                            )
+                        } else {
+                            Text(
+                                text = "🔴 미등록",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = ActionRed
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    OutlinedTextField(
+                        value = settings.homeAddressInput,
+                        onValueChange = { viewModel.onHomeAddressChanged(it) },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("집 주소 (예: 서울시 종로구 세종대로 1)") },
+                        isError = settings.homeAddressError != null,
+                        supportingText = settings.homeAddressError?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
+                        singleLine = true
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = settings.homeLatInput,
+                            onValueChange = { viewModel.onHomeLatChanged(it) },
+                            modifier = Modifier.weight(1f),
+                            label = { Text("위도 (예: 37.5665)") },
+                            isError = settings.homeLatError != null,
+                            supportingText = settings.homeLatError?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            singleLine = true
+                        )
+
+                        OutlinedTextField(
+                            value = settings.homeLngInput,
+                            onValueChange = { viewModel.onHomeLngChanged(it) },
+                            modifier = Modifier.weight(1f),
+                            label = { Text("경도 (예: 126.9780)") },
+                            isError = settings.homeLngError != null,
+                            supportingText = settings.homeLngError?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            singleLine = true
+                        )
+                    }
+                }
+            }
+
+            // 2. Destination Management Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "📍 고정 목적지 (${settings.destinations.size}/6)",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
@@ -156,7 +165,7 @@ fun AdminScreen(
                                 onClick = { viewModel.openAddDestinationDialog() },
                                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                             ) {
-                                Text("➕ 추가")
+                                Text("➕ 목적지 추가")
                             }
                         }
                     }
@@ -174,7 +183,7 @@ fun AdminScreen(
 
                     if (settings.destinations.isEmpty()) {
                         Text(
-                            text = "등록된 목적지가 없어요. '➕ 추가' 버튼을 눌러 등록해 주세요.",
+                            text = "등록된 목적지가 없어요. 상단의 '➕ 목적지 추가' 버튼을 눌러 등록해 주세요.",
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.outline
                         )
@@ -183,44 +192,67 @@ fun AdminScreen(
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F7FA)),
+                                    .padding(vertical = 6.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFF0F4F8)),
                                 shape = RoundedCornerShape(8.dp)
                             ) {
-                                Row(
+                                Column(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
+                                        .padding(14.dp)
                                 ) {
-                                    Column(modifier = Modifier.weight(1f)) {
+                                    // 1단: 목적지 이름 및 상세 정보 (전체 가로폭 확보하여 글자 찌그러짐 방지)
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
                                         Text(
-                                            text = "${index + 1}. ${dest.displayName} (${dest.name})",
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.Bold
+                                            text = "${index + 1}. ${dest.displayName}",
+                                            style = MaterialTheme.typography.titleLarge,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.primary
                                         )
+                                        Spacer(modifier = Modifier.width(8.dp))
                                         Text(
-                                            text = "좌표: ${dest.latitude}, ${dest.longitude}",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = Color.Gray
+                                            text = "(${dest.name})",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            color = Color.DarkGray
                                         )
                                     }
 
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Spacer(modifier = Modifier.height(4.dp))
+
+                                    Text(
+                                        text = "위도: ${dest.latitude} / 경도: ${dest.longitude}",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = Color.Gray
+                                    )
+
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    HorizontalDivider(color = Color(0xFFE0E0E0))
+                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                    // 2단: 조작 버튼 행 (우측 정렬)
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.End,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
                                         IconButton(
                                             onClick = { viewModel.moveDestinationUp(dest.id) },
                                             enabled = index > 0
                                         ) {
-                                            Text("▲")
+                                            Text("▲", fontWeight = FontWeight.Bold)
                                         }
 
                                         IconButton(
                                             onClick = { viewModel.moveDestinationDown(dest.id) },
                                             enabled = index < settings.destinations.size - 1
                                         ) {
-                                            Text("▼")
+                                            Text("▼", fontWeight = FontWeight.Bold)
                                         }
+
+                                        Spacer(modifier = Modifier.width(8.dp))
 
                                         OutlinedButton(
                                             onClick = { viewModel.openEditDestinationDialog(dest) }
@@ -228,7 +260,7 @@ fun AdminScreen(
                                             Text("수정")
                                         }
 
-                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Spacer(modifier = Modifier.width(8.dp))
 
                                         OutlinedButton(
                                             onClick = { viewModel.deleteDestination(dest.id) },
@@ -244,7 +276,62 @@ fun AdminScreen(
                 }
             }
 
-            // 3. Security (PIN Change) Card
+            // 3. ODsay API Key Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "🌐 ODsay API 키 설정",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        if (settings.isApiKeyConfigured) {
+                            Text(
+                                text = "🟢 키 설정됨",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = HomeButtonGreen
+                            )
+                        } else {
+                            Text(
+                                text = "🔴 키 미설정",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = ActionRed
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "대중교통 길찾기를 위해 ODsay API 키가 필요합니다. 발급받은 키를 아래에 입력하고 하단 '설정 저장하기'를 눌러주세요.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Gray
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    OutlinedTextField(
+                        value = settings.apiKeyInput,
+                        onValueChange = { viewModel.onApiKeyChanged(it) },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("ODsay API Key") },
+                        singleLine = true
+                    )
+                }
+            }
+
+            // 4. Security (PIN Change) Card
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -274,7 +361,7 @@ fun AdminScreen(
                             onValueChange = { viewModel.onNewPinChanged(it) },
                             modifier = Modifier.weight(1f),
                             textStyle = MaterialTheme.typography.bodyLarge,
-                            label = { Text("새 PIN (4자리)") },
+                            label = { Text("새 PIN") },
                             visualTransformation = PasswordVisualTransformation(),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword)
                         )
@@ -301,7 +388,7 @@ fun AdminScreen(
                 }
             }
 
-            // 4. API Usage Statistics
+            // 5. API Usage Statistics
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -322,22 +409,30 @@ fun AdminScreen(
                 }
             }
 
-            // 5. Save All Settings Button
+            if (settings.saveErrorMessage != null) {
+                Text(
+                    text = settings.saveErrorMessage!!,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            // 6. Save Button
             BigButton(
                 text = "💾 설정 저장하기",
                 onClick = {
-                    val isSuccess = viewModel.saveAllSettings()
-                    if (isSuccess) {
+                    if (viewModel.saveAllSettings()) {
                         onGoHome()
                     }
                 },
                 backgroundColor = HomeButtonGreen,
-                minHeight = 88.dp
+                minHeight = 80.dp
             )
         }
     }
 
-    // Destination Add/Edit Dialog
+    // Add / Edit Destination Dialog
     if (settings.isDestDialogVisible) {
         AlertDialog(
             onDismissRequest = { viewModel.closeDestinationDialog() },
@@ -352,42 +447,44 @@ fun AdminScreen(
                     OutlinedTextField(
                         value = settings.destShortNameInput,
                         onValueChange = { viewModel.onDestShortNameChanged(it) },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("짧은 이름 (예: 병원, 시장)") },
+                        label = { Text("표시 이름 (예: 병원)") },
                         isError = settings.destShortNameError != null,
-                        supportingText = settings.destShortNameError?.let { { Text(it) } }
+                        supportingText = settings.destShortNameError?.let { { Text(it) } },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
                     )
 
                     OutlinedTextField(
                         value = settings.destFullNameInput,
                         onValueChange = { viewModel.onDestFullNameChanged(it) },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("실제 장소 이름 (예: 서울성모병원)") },
+                        label = { Text("상세 명칭 (예: 서울대학교병원)") },
                         isError = settings.destFullNameError != null,
-                        supportingText = settings.destFullNameError?.let { { Text(it) } }
+                        supportingText = settings.destFullNameError?.let { { Text(it) } },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
                     )
 
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedTextField(
-                            value = settings.destLatInput,
-                            onValueChange = { viewModel.onDestLatChanged(it) },
-                            modifier = Modifier.weight(1f),
-                            label = { Text("위도") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            isError = settings.destLatError != null,
-                            supportingText = settings.destLatError?.let { { Text(it) } }
-                        )
+                    OutlinedTextField(
+                        value = settings.destLatInput,
+                        onValueChange = { viewModel.onDestLatChanged(it) },
+                        label = { Text("위도 (예: 37.5796)") },
+                        isError = settings.destLatError != null,
+                        supportingText = settings.destLatError?.let { { Text(it) } },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
 
-                        OutlinedTextField(
-                            value = settings.destLngInput,
-                            onValueChange = { viewModel.onDestLngChanged(it) },
-                            modifier = Modifier.weight(1f),
-                            label = { Text("경도") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            isError = settings.destLngError != null,
-                            supportingText = settings.destLngError?.let { { Text(it) } }
-                        )
-                    }
+                    OutlinedTextField(
+                        value = settings.destLngInput,
+                        onValueChange = { viewModel.onDestLngChanged(it) },
+                        label = { Text("경도 (예: 126.9990)") },
+                        isError = settings.destLngError != null,
+                        supportingText = settings.destLngError?.let { { Text(it) } },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             },
             confirmButton = {

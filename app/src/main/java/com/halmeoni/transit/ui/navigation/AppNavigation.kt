@@ -84,7 +84,8 @@ class AppViewModelFactory(private val context: Context) : ViewModelProvider.Fact
     val routeRepository by lazy {
         OdsayRouteRepository(
             apiService = odsayApiService,
-            apiUsageTracker = apiUsageTracker
+            apiUsageTracker = apiUsageTracker,
+            apiKeyProvider = { settingsRepository.getApiKey() }
         )
     }
 
