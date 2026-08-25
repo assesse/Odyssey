@@ -197,7 +197,7 @@ fun RouteScreen(
                         .padding(paddingValues)
                         .padding(horizontal = 16.dp, vertical = 12.dp)
                 ) {
-                    // 상단 요약 카드 (총 소요시간, 도보/환승 정보 + 실시간 새로고침 버튼)
+                    // 상단 요약 카드 (1단: 총 소요시간 / 경로 번호, 2단: 도보/환승 / 실시간 새로고침)
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -209,6 +209,7 @@ fun RouteScreen(
                                 .fillMaxWidth()
                                 .padding(16.dp)
                         ) {
+                            // 1단: 총 소요시간 및 경로 번호 배지
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -221,48 +222,65 @@ fun RouteScreen(
                                     color = MaterialTheme.colorScheme.primary
                                 )
 
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    if (state.totalRouteCount > 1) {
-                                        Surface(
-                                            shape = RoundedCornerShape(6.dp),
-                                            color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)
-                                        ) {
-                                            Text(
-                                                text = "경로 ${state.currentRouteIndex + 1}/${state.totalRouteCount}",
-                                                style = MaterialTheme.typography.titleMedium,
-                                                fontWeight = FontWeight.Bold,
-                                                color = MaterialTheme.colorScheme.secondary,
-                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                            )
-                                        }
-                                    }
-
-                                    // 실시간 새로고침 버튼
-                                    OutlinedButton(
-                                        onClick = { viewModel.refreshRealtime() },
-                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                                        shape = RoundedCornerShape(8.dp)
+                                if (state.totalRouteCount > 1) {
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)
                                     ) {
-                                        if (state.isRealtimeLoading) {
-                                            CircularProgressIndicator(
-                                                modifier = Modifier.height(16.dp).width(16.dp),
-                                                strokeWidth = 2.dp
-                                            )
-                                        } else {
-                                            Text("🔄 실시간 갱신", style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp), fontWeight = FontWeight.Bold)
-                                        }
+                                        Text(
+                                            text = "경로 ${state.currentRouteIndex + 1}/${state.totalRouteCount}",
+                                            style = MaterialTheme.typography.titleMedium.copy(fontSize = 16.sp),
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.secondary,
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                            maxLines = 1,
+                                            softWrap = false
+                                        )
                                     }
                                 }
                             }
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                text = "도보 ${route.totalWalkDistance}m · 환승 ${route.transferCount}회",
-                                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp),
-                                color = Color.DarkGray
-                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+                            HorizontalDivider(color = Color(0xFFE2E8F0))
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // 2단: 도보/환승 정보 및 실시간 갱신 버튼
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "도보 ${route.totalWalkDistance}m · 환승 ${route.transferCount}회",
+                                    style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp),
+                                    color = Color.DarkGray,
+                                    modifier = Modifier.weight(1f)
+                                )
+
+                                Spacer(modifier = Modifier.width(8.dp))
+
+                                OutlinedButton(
+                                    onClick = { viewModel.refreshRealtime() },
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+                                    modifier = Modifier.height(38.dp),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    if (state.isRealtimeLoading) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.height(16.dp).width(16.dp),
+                                            strokeWidth = 2.dp
+                                        )
+                                    } else {
+                                        Text(
+                                            text = "🔄 실시간 갱신",
+                                            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 1,
+                                            softWrap = false
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
 

@@ -46,13 +46,13 @@ class SeoulBusProvider(
 
             val response = okHttpClient.newCall(request).execute()
             if (!response.isSuccessful) {
-                return@withContext RealtimeStatus.NetworkError("통신 오류 (코드: ${response.code()})")
+                return@withContext RealtimeStatus.NetworkError("실시간 버스 정보를 가져오지 못했어요.")
             }
 
             val xmlBody = response.body()?.string() ?: ""
             parseSeoulBusXml(xmlBody, targetBusNo, targetArsId, step.startName)
         } catch (e: Exception) {
-            RealtimeStatus.NetworkError(e.message ?: "네트워크 연결 오류")
+            RealtimeStatus.NetworkError("실시간 버스 정보를 가져오지 못했어요.")
         }
     }
 

@@ -34,6 +34,7 @@ class SeoulSubwayProvider(
         try {
             val encodedKey = if (apiKey.contains("%")) apiKey else URLEncoder.encode(apiKey, "UTF-8")
             val encodedStation = URLEncoder.encode(cleanStationName, "UTF-8")
+            // Use http or https seamlessly
             val url = "http://swopenapi.seoul.go.kr/api/subway/$encodedKey/json/realtimeStationArrival/0/16/$encodedStation"
 
             val request = Request.Builder()
@@ -43,13 +44,13 @@ class SeoulSubwayProvider(
 
             val response = okHttpClient.newCall(request).execute()
             if (!response.isSuccessful) {
-                return@withContext RealtimeStatus.NetworkError("지하철 서버 통신 오류 (코드: ${response.code()})")
+                return@withContext RealtimeStatus.NetworkError("실시간 지하철 정보를 가져오지 못했어요.")
             }
 
             val jsonBody = response.body()?.string() ?: ""
             parseSubwayArrivalJson(jsonBody, targetSubwayId, step)
         } catch (e: Exception) {
-            RealtimeStatus.NetworkError(e.message ?: "지하철 네트워크 연결 오류")
+            RealtimeStatus.NetworkError("실시간 지하철 정보를 가져오지 못했어요.")
         }
     }
 
@@ -69,7 +70,7 @@ class SeoulSubwayProvider(
                     return RealtimeStatus.NoData("해당 역의 실시간 도착 정보가 없습니다.")
                 }
                 if (code.startsWith("ERROR") || code == "INFO-100") {
-                    return RealtimeStatus.AuthenticationRequired("지하철 인증키 오류 ($msg)")
+                    return RealtimeStatus.AuthenticationRequired("지하철 인증키를 확인해 주세요.")
                 }
             }
 
@@ -140,7 +141,7 @@ class SeoulSubwayProvider(
 
             return if (isStale) RealtimeStatus.Stale(arrivalObj) else RealtimeStatus.Available(arrivalObj)
         } catch (e: Exception) {
-            return RealtimeStatus.NetworkError("지하철 데이터 해석 오류: ${e.message}")
+            return RealtimeStatus.NetworkError("실시간 지하철 정보를 가져오지 못했어요.")
         }
     }
 
