@@ -188,8 +188,8 @@ class AdminViewModelTest {
 
     @Test
     fun pin_changeValidation() {
-        // Default PIN is 0000
-        assertEquals("0000", settingsRepo.getPin())
+        // Default PIN is 1234
+        assertEquals("1234", settingsRepo.getPin())
 
         // 1. Success change to 5678
         viewModel.onHomeAddressChanged("집")

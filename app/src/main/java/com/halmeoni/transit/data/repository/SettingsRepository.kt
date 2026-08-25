@@ -12,7 +12,7 @@ class SettingsRepository(
         private const val PREF_KEY_HOME_LNG = "home_longitude"
         private const val PREF_KEY_HOME_ADDR = "home_address"
 
-        const val DEFAULT_PIN = "0000"
+        const val DEFAULT_PIN = "1234"
     }
 
     fun getPin(): String {
