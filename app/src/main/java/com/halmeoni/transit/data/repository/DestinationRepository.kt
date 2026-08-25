@@ -11,45 +11,6 @@ class DestinationRepository(
 ) {
     companion object {
         private const val PREF_KEY_DESTINATIONS = "destinations_list"
-
-        val DEFAULT_DESTINATIONS = listOf(
-            Destination(
-                id = "default_hospital",
-                name = "서울대학교병원",
-                displayName = "병원",
-                latitude = 37.5796,
-                longitude = 126.9990,
-                icon = "hospital",
-                order = 1
-            ),
-            Destination(
-                id = "default_market",
-                name = "경동시장",
-                displayName = "시장",
-                latitude = 37.5804,
-                longitude = 127.0385,
-                icon = "market",
-                order = 2
-            ),
-            Destination(
-                id = "default_welfare",
-                name = "종로노인복지관",
-                displayName = "복지관",
-                latitude = 37.5760,
-                longitude = 126.9980,
-                icon = "welfare",
-                order = 3
-            ),
-            Destination(
-                id = "default_park",
-                name = "탑골공원",
-                displayName = "공원",
-                latitude = 37.5712,
-                longitude = 126.9882,
-                icon = "park",
-                order = 4
-            )
-        )
     }
 
     fun getDestinations(): List<Destination> {
@@ -90,13 +51,8 @@ class DestinationRepository(
         saveAll(current)
     }
 
-    fun updateDestinationOrder(destinations: List<Destination>) {
+    fun updateDestinations(destinations: List<Destination>) {
         saveAll(destinations)
-    }
-
-    fun resetToDefaults(): List<Destination> {
-        saveAll(DEFAULT_DESTINATIONS)
-        return DEFAULT_DESTINATIONS
     }
 
     private fun saveAll(list: List<Destination>) {

@@ -23,7 +23,6 @@ enum class RouteErrorType {
     LOCATION_SERVICE_DISABLED,
     LOCATION_UNAVAILABLE,
     ROUTE_NOT_FOUND,
-    DAILY_LIMIT_EXCEEDED,
     NETWORK_ERROR,
     UNKNOWN_ERROR
 }
@@ -163,15 +162,6 @@ class RouteViewModel(
                     endLat = dest.latitude
                     endLng = dest.longitude
                 }
-            }
-
-            if (!apiUsageTracker.canMakeApiCall()) {
-                _uiState.value = RouteUiState.Error(
-                    errorType = RouteErrorType.DAILY_LIMIT_EXCEEDED,
-                    message = "오늘은 더 이상 길을 찾을 수 없어요. (일일 한도 30회 초과)\n내일 다시 이용해 주세요.",
-                    destinationTitle = title
-                )
-                return@launch
             }
 
             val routesResult = routeRepository.getTransitRoutes(

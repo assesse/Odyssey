@@ -66,14 +66,6 @@ fun RouteScreen(
     }
 
     LaunchedEffect(request) {
-        if (request is RouteRequest.GoHome) {
-            permissionLauncher.launch(
-                arrayOf(
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION
-                )
-            )
-        }
         viewModel.loadRoute(request)
     }
 

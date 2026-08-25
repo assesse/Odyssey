@@ -12,62 +12,37 @@ class ApiUsageTracker(
     }
 ) {
     companion object {
-        const val PREF_KEY_DATE = "api_usage_date"
-        const val PREF_KEY_COUNT = "api_usage_count"
-        const val MAX_DAILY_CALLS = 30
-        const val WARNING_THRESHOLD = 25
+        private const val PREF_KEY_DATE = "api_usage_date"
+        private const val PREF_KEY_COUNT = "api_usage_count"
     }
 
-    sealed class UsageResult {
-        object Allowed : UsageResult()
-        object Warning : UsageResult()
-        object LimitExceeded : UsageResult()
-    }
-
-    private fun checkAndResetIfNewDay() {
-        val today = dateSupplier()
-        val savedDate = sharedPreferences.getString(PREF_KEY_DATE, "") ?: ""
-        if (savedDate != today) {
-            sharedPreferences.edit()
-                .putString(PREF_KEY_DATE, today)
-                .putInt(PREF_KEY_COUNT, 0)
-                .apply()
-        }
-    }
-
+    @Synchronized
     fun getUsageCount(): Int {
         checkAndResetIfNewDay()
         return sharedPreferences.getInt(PREF_KEY_COUNT, 0)
     }
 
-    fun canMakeApiCall(): Boolean {
-        return getUsageCount() < MAX_DAILY_CALLS
-    }
-
-    fun isWarningThresholdReached(): Boolean {
-        return getUsageCount() >= WARNING_THRESHOLD
-    }
-
-    fun isLimitReached(): Boolean {
-        return getUsageCount() >= MAX_DAILY_CALLS
-    }
-
-    fun incrementUsage(): UsageResult {
+    @Synchronized
+    fun incrementUsage(): Int {
         checkAndResetIfNewDay()
         val currentCount = sharedPreferences.getInt(PREF_KEY_COUNT, 0)
-        if (currentCount >= MAX_DAILY_CALLS) {
-            return UsageResult.LimitExceeded
-        }
-
         val newCount = currentCount + 1
         sharedPreferences.edit()
             .putInt(PREF_KEY_COUNT, newCount)
+            .putString(PREF_KEY_DATE, dateSupplier())
             .apply()
+        return newCount
+    }
 
-        return when {
-            newCount >= MAX_DAILY_CALLS -> UsageResult.LimitExceeded
-            newCount >= WARNING_THRESHOLD -> UsageResult.Warning
-            else -> UsageResult.Allowed
+    @Synchronized
+    private fun checkAndResetIfNewDay() {
+        val today = dateSupplier()
+        val savedDate = sharedPreferences.getString(PREF_KEY_DATE, null)
+        if (savedDate != today) {
+            sharedPreferences.edit()
+                .putString(PREF_KEY_DATE, today)
+                .putInt(PREF_KEY_COUNT, 0)
+                .apply()
         }
     }
 }

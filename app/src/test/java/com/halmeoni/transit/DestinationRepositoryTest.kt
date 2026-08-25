@@ -50,10 +50,33 @@ class DestinationRepositoryTest {
     }
 
     @Test
-    fun resetToDefaults_explicitlyPopulatesDefaultDestinations() {
-        val list = repository.resetToDefaults()
-        assertEquals(4, list.size)
-        assertTrue(repository.hasDestinations())
-        assertNotNull(repository.getDestinationById("default_hospital"))
+    fun saveAndDeleteDestination_updatesListCorrectly() {
+        val dest1 = Destination("id_1", "장소 1", "표시 1", 37.5, 127.0, "place", 1)
+        val dest2 = Destination("id_2", "장소 2", "표시 2", 37.6, 127.1, "place", 2)
+
+        repository.saveDestination(dest1)
+        repository.saveDestination(dest2)
+        assertEquals(2, repository.getDestinations().size)
+
+        repository.deleteDestination("id_1")
+        val remaining = repository.getDestinations()
+        assertEquals(1, remaining.size)
+        assertEquals("id_2", remaining[0].id)
+    }
+
+    @Test
+    fun updateDestinations_persistsAcrossRepositoryRecreation() {
+        val destList = listOf(
+            Destination("id_1", "장소 1", "표시 1", 37.5, 127.0, "place", 1),
+            Destination("id_2", "장소 2", "표시 2", 37.6, 127.1, "place", 2)
+        )
+        repository.updateDestinations(destList)
+
+        // Simulate app restart by creating a new repository with the same SharedPreferences
+        val recreatedRepo = DestinationRepository(testPrefs)
+        val loaded = recreatedRepo.getDestinations()
+        assertEquals(2, loaded.size)
+        assertEquals("id_1", loaded[0].id)
+        assertEquals("id_2", loaded[1].id)
     }
 }

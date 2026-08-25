@@ -65,7 +65,6 @@ dependencies {
     implementation(libs.kotlinx.coroutines.play.services)
     implementation(libs.retrofit)
     implementation(libs.retrofit.converter.gson)
-    implementation(libs.okhttp.logging)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

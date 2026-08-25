@@ -318,4 +318,35 @@ class RouteViewModelTest {
         advanceUntilIdle()
         assertEquals(1, fakeRouteRepo.callCount)
     }
+
+    @Test
+    fun apiCallCountAbove30_doesNotBlockRouteSearch() = runTest {
+        settingsRepo.saveHomeLocation(testHome)
+        destRepo.saveDestination(testHospital)
+        val sampleRoute = TransitRoute(
+            id = "r1",
+            totalTime = 30,
+            totalWalkDistance = 200,
+            totalDistance = 5000,
+            transferCount = 0,
+            payment = 1400,
+            firstStartStation = "강남역",
+            lastEndStation = "혜화역",
+            steps = emptyList()
+        )
+        fakeRouteRepo.returnResult = Result.success(listOf(sampleRoute))
+
+        // Pre-increment usage to 35
+        for (i in 1..35) {
+            apiUsageTracker.incrementUsage()
+        }
+        assertEquals(35, apiUsageTracker.getUsageCount())
+
+        val viewModel = createViewModel()
+        viewModel.loadRoute(RouteRequest.ToDestination(testHospital.id))
+        advanceUntilIdle()
+
+        assertEquals(1, fakeRouteRepo.callCount)
+        assertTrue(viewModel.uiState.value is RouteUiState.Success)
+    }
 }

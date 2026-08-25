@@ -36,6 +36,10 @@ fun HomeScreen(
     onGoHomeSelected: () -> Unit,
     onNavigateToPin: () -> Unit
 ) {
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        viewModel.loadDestinations()
+    }
+
     val uiState by viewModel.uiState.collectAsState()
 
     Column(

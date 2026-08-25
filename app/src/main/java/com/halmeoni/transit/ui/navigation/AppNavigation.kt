@@ -30,7 +30,6 @@ import com.halmeoni.transit.ui.home.HomeViewModel
 import com.halmeoni.transit.ui.route.RouteScreen
 import com.halmeoni.transit.ui.route.RouteViewModel
 import okhttp3.OkHttpClient
-import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
@@ -65,7 +64,6 @@ class AppViewModelFactory(private val context: Context) : ViewModelProvider.Fact
         val okHttpClient = OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)
-            .addInterceptor(HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY })
             .build()
 
         Retrofit.Builder()
@@ -96,7 +94,11 @@ class AppViewModelFactory(private val context: Context) : ViewModelProvider.Fact
                 ) as T
             }
             modelClass.isAssignableFrom(AdminViewModel::class.java) -> {
-                AdminViewModel(settingsRepository, apiUsageTracker) as T
+                AdminViewModel(
+                    settingsRepository = settingsRepository,
+                    destinationRepository = destinationRepository,
+                    apiUsageTracker = apiUsageTracker
+                ) as T
             }
             else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
         }
