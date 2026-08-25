@@ -106,6 +106,7 @@ class RouteViewModelTest {
 
         destRepo = DestinationRepository(testPrefs)
         settingsRepo = SettingsRepository(testPrefs)
+        settingsRepo.saveApiKey("TEST_ODSAY_API_KEY")
         apiUsageTracker = ApiUsageTracker(testPrefs)
         fakeLocationProvider = FakeTestLocationProvider()
     }
@@ -225,6 +226,7 @@ class RouteViewModelTest {
     fun apiKeyNotConfigured_doesNotReturnSampleRoute_andReturnsConfigurationError() = runTest {
         settingsRepo.saveHomeLocation(testHome)
         destRepo.saveDestination(testHospital)
+        settingsRepo.saveApiKey("") // Explicitly unconfigured
         fakeRouteRepo.returnResult = TransitRouteResult.Failure(RouteRepositoryError.ApiKeyNotConfigured)
 
         val viewModel = createViewModel()
@@ -350,5 +352,81 @@ class RouteViewModelTest {
 
         assertEquals(1, fakeRouteRepo.callCount)
         assertTrue(viewModel.uiState.value is RouteUiState.Success)
+    }
+
+    @Test
+    fun realtimeEnrichment_populatesRealtimeStatusWithoutFailingPrimaryRoute() = runTest {
+        settingsRepo.saveHomeLocation(testHome)
+        destRepo.saveDestination(testHospital)
+
+        val busStep = com.halmeoni.transit.domain.model.RouteStep(
+            type = com.halmeoni.transit.domain.model.StepType.BUS,
+            routeName = "661",
+            startName = "시청앞",
+            endName = "종로2가",
+            startCityCode = 1000,
+            startArsId = "16147"
+        )
+        val sampleRoute = TransitRoute(
+            id = "r1",
+            totalTime = 30,
+            totalWalkDistance = 200,
+            totalDistance = 5000.0,
+            transferCount = 0,
+            payment = 1400,
+            firstStartStation = "시청앞",
+            lastEndStation = "종로2가",
+            steps = listOf(busStep)
+        )
+        fakeRouteRepo.returnResult = TransitRouteResult.Success(listOf(sampleRoute))
+
+        val viewModel = createViewModel()
+        viewModel.loadRoute(RouteRequest.ToDestination(testHospital.id))
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertTrue(state is RouteUiState.Success)
+        val success = state as RouteUiState.Success
+        assertEquals(1, success.bestRoute.steps.size)
+        // Primary route is always preserved
+        assertNotNull(success.realtimeStatusMap[0])
+    }
+
+    @Test
+    fun refreshRealtime_reloadsRealtimeTransitState() = runTest {
+        settingsRepo.saveHomeLocation(testHome)
+        destRepo.saveDestination(testHospital)
+
+        val busStep = com.halmeoni.transit.domain.model.RouteStep(
+            type = com.halmeoni.transit.domain.model.StepType.BUS,
+            routeName = "661",
+            startName = "시청앞",
+            endName = "종로2가",
+            startCityCode = 1000,
+            startArsId = "16147"
+        )
+        val sampleRoute = TransitRoute(
+            id = "r1",
+            totalTime = 30,
+            totalWalkDistance = 200,
+            totalDistance = 5000.0,
+            transferCount = 0,
+            payment = 1400,
+            firstStartStation = "시청앞",
+            lastEndStation = "종로2가",
+            steps = listOf(busStep)
+        )
+        fakeRouteRepo.returnResult = TransitRouteResult.Success(listOf(sampleRoute))
+
+        val viewModel = createViewModel()
+        viewModel.loadRoute(RouteRequest.ToDestination(testHospital.id))
+        advanceUntilIdle()
+
+        // Call manual refresh
+        viewModel.refreshRealtime()
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertTrue(state is RouteUiState.Success)
     }
 }

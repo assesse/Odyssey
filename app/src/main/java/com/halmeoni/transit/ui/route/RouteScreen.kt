@@ -4,7 +4,9 @@ import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -16,14 +18,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -34,15 +37,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.halmeoni.transit.domain.model.RealtimeArrival
+import com.halmeoni.transit.domain.model.RealtimeStatus
 import com.halmeoni.transit.domain.model.RouteRequest
 import com.halmeoni.transit.domain.model.RouteStep
 import com.halmeoni.transit.domain.model.StepType
 import com.halmeoni.transit.ui.components.BigButton
+import com.halmeoni.transit.ui.components.ErrorScreen
 import com.halmeoni.transit.ui.components.LoadingScreen
 import com.halmeoni.transit.ui.components.TopBar
 import com.halmeoni.transit.ui.theme.ActionRed
@@ -52,8 +57,8 @@ import com.halmeoni.transit.ui.theme.HomeButtonGreen
 fun RouteScreen(
     request: RouteRequest,
     viewModel: RouteViewModel,
-    onBack: () -> Unit,
     onGoHome: () -> Unit,
+    onBack: () -> Unit,
     onNavigateToAdmin: (() -> Unit)? = null
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -61,9 +66,9 @@ fun RouteScreen(
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        val granted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
-                permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
-        if (granted) {
+        val fineGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
+        val coarseGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
+        if (fineGranted || coarseGranted) {
             viewModel.loadRoute(request)
         }
     }
@@ -73,18 +78,27 @@ fun RouteScreen(
     }
 
     when (val state = uiState) {
-        is RouteUiState.Idle, is RouteUiState.Loading -> {
-            val title = if (state is RouteUiState.Loading) state.destinationTitle else ""
+        is RouteUiState.Idle -> {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
+            )
+        }
+        is RouteUiState.Loading -> {
             LoadingScreen(
-                message = if (title.isNotBlank()) "$title 가는 길을\n찾고 있어요..." else "길을 찾고 있어요...",
-                onCancel = onBack
+                message = "${state.destinationTitle} 가는\n가장 편한 길을 찾고 있어요...",
+                onCancel = {
+                    viewModel.cancelSearch()
+                    onGoHome()
+                }
             )
         }
         is RouteUiState.Error -> {
             Scaffold(
                 topBar = {
                     TopBar(
-                        title = if (state.destinationTitle.isNotBlank()) "${state.destinationTitle} 길찾기" else "길찾기 안내",
+                        title = "${state.destinationTitle} 가는 길",
                         onBackClick = onBack,
                         onHomeClick = onGoHome
                     )
@@ -94,8 +108,7 @@ fun RouteScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues)
-                        .padding(24.dp)
-                        .verticalScroll(rememberScrollState()),
+                        .padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
@@ -184,7 +197,7 @@ fun RouteScreen(
                         .padding(paddingValues)
                         .padding(horizontal = 16.dp, vertical = 12.dp)
                 ) {
-                    // 상단 요약 카드 (텍스트 겹침 방지 및 깔끔한 정리)
+                    // 상단 요약 카드 (총 소요시간, 도보/환승 정보 + 실시간 새로고침 버튼)
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -207,18 +220,40 @@ fun RouteScreen(
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.primary
                                 )
-                                if (state.totalRouteCount > 1) {
-                                    Surface(
-                                        shape = RoundedCornerShape(6.dp),
-                                        color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)
+
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    if (state.totalRouteCount > 1) {
+                                        Surface(
+                                            shape = RoundedCornerShape(6.dp),
+                                            color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)
+                                        ) {
+                                            Text(
+                                                text = "경로 ${state.currentRouteIndex + 1}/${state.totalRouteCount}",
+                                                style = MaterialTheme.typography.titleMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.secondary,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                            )
+                                        }
+                                    }
+
+                                    // 실시간 새로고침 버튼
+                                    OutlinedButton(
+                                        onClick = { viewModel.refreshRealtime() },
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                        shape = RoundedCornerShape(8.dp)
                                     ) {
-                                        Text(
-                                            text = "경로 ${state.currentRouteIndex + 1}/${state.totalRouteCount}",
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.secondary,
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                        )
+                                        if (state.isRealtimeLoading) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.height(16.dp).width(16.dp),
+                                                strokeWidth = 2.dp
+                                            )
+                                        } else {
+                                            Text("🔄 실시간 갱신", style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp), fontWeight = FontWeight.Bold)
+                                        }
                                     }
                                 }
                             }
@@ -240,16 +275,20 @@ fun RouteScreen(
                         contentPadding = PaddingValues(bottom = 12.dp)
                     ) {
                         itemsIndexed(route.steps) { index, step ->
-                            StepCard(stepNumber = index + 1, step = step)
+                            StepCard(
+                                stepNumber = index + 1,
+                                step = step,
+                                realtimeStatus = state.realtimeStatusMap[index]
+                            )
                         }
                     }
 
-                    // 하단 버튼 바 (1번 요구사항: 1/2 분할 좌측 '다른 경로', 우측 '처음으로')
+                    // 하단 버튼 바 (1/2 분할: 좌측 '다른 경로', 우측 '처음으로')
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            .padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         if (state.totalRouteCount > 1) {
                             Button(
@@ -365,7 +404,11 @@ fun getTransitLineColor(step: RouteStep): Color {
 }
 
 @Composable
-fun StepCard(stepNumber: Int, step: RouteStep) {
+fun StepCard(
+    stepNumber: Int,
+    step: RouteStep,
+    realtimeStatus: RealtimeStatus? = null
+) {
     val circleNum = getCircleNumber(stepNumber)
 
     Card(
@@ -423,7 +466,6 @@ fun StepCard(stepNumber: Int, step: RouteStep) {
                         )
                         Spacer(modifier = Modifier.width(8.dp))
 
-                        // 버스 번호 배지 (노선 색상 배경 + 흰색 글씨)
                         Surface(
                             shape = RoundedCornerShape(6.dp),
                             color = lineColor,
@@ -460,12 +502,18 @@ fun StepCard(stepNumber: Int, step: RouteStep) {
                         modifier = Modifier.padding(start = 4.dp, top = 2.dp)
                     )
 
+                    // 실시간 도착 정보 카드 배지
+                    if (realtimeStatus != null && realtimeStatus !is RealtimeStatus.NotRequested) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        RealtimeArrivalCard(status = realtimeStatus)
+                    }
+
                     // 중간 화살표 및 이동 정류장 수
                     val stopCountText = if (step.stationCount > 0) "+${step.stationCount}개 정류장" else "이동"
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 6.dp),
+                            .padding(vertical = 8.dp),
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -506,7 +554,6 @@ fun StepCard(stepNumber: Int, step: RouteStep) {
                         )
                         Spacer(modifier = Modifier.width(8.dp))
 
-                        // 지하철 호선 배지 (노선 색상 배경 + 흰색 글씨)
                         Surface(
                             shape = RoundedCornerShape(6.dp),
                             color = lineColor,
@@ -543,12 +590,18 @@ fun StepCard(stepNumber: Int, step: RouteStep) {
                         modifier = Modifier.padding(start = 4.dp, top = 2.dp)
                     )
 
+                    // 실시간 도착 정보 카드 배지
+                    if (realtimeStatus != null && realtimeStatus !is RealtimeStatus.NotRequested) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        RealtimeArrivalCard(status = realtimeStatus)
+                    }
+
                     // 중간 화살표 및 이동 역 수
                     val stationCountText = if (step.stationCount > 0) "+${step.stationCount}개 역" else "이동"
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 6.dp),
+                            .padding(vertical = 8.dp),
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -583,5 +636,168 @@ fun StepCard(stepNumber: Int, step: RouteStep) {
                 }
             }
         }
+    }
+}
+
+@Composable
+fun RealtimeArrivalCard(status: RealtimeStatus) {
+    when (status) {
+        is RealtimeStatus.Loading -> {
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = Color(0xFFF1F5F9),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.height(14.dp).width(14.dp),
+                        strokeWidth = 2.dp,
+                        color = Color.Gray
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "실시간 도착 정보 확인 중...",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.DarkGray
+                    )
+                }
+            }
+        }
+        is RealtimeStatus.Available -> {
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = Color(0xFFF0FDF4),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF86EFAC)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "🟢 실시간 도착 정보",
+                            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF15803D)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    when (val arr = status.arrival) {
+                        is RealtimeArrival.Bus -> {
+                            Text(
+                                text = "▶ ${arr.firstMessage}",
+                                style = MaterialTheme.typography.titleMedium.copy(fontSize = 17.sp),
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF166534)
+                            )
+                            if (!arr.secondMessage.isNullOrBlank()) {
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = arr.secondMessage,
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
+                                    color = Color(0xFF15803D)
+                                )
+                            }
+                        }
+                        is RealtimeArrival.Subway -> {
+                            val destPart = if (arr.destinationName.isNotBlank()) " (${arr.destinationName})" else ""
+                            Text(
+                                text = "▶ ${arr.arrivalMessage}$destPart",
+                                style = MaterialTheme.typography.titleMedium.copy(fontSize = 17.sp),
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF166534)
+                            )
+                            if (arr.currentPositionMsg.isNotBlank()) {
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "• 현재 위치: ${arr.currentPositionMsg}",
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
+                                    color = Color(0xFF15803D)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        is RealtimeStatus.Stale -> {
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = Color(0xFFFFFBEB),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFDE68A)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text(
+                        text = "⚠️ 정보가 오래되었어요. [새로고침]을 눌러주세요.",
+                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFB45309)
+                    )
+                }
+            }
+        }
+        is RealtimeStatus.NoData -> {
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = Color(0xFFF8FAFC),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "⚪ ${status.message}",
+                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
+                    color = Color.Gray,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                )
+            }
+        }
+        is RealtimeStatus.Unsupported -> {
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = Color(0xFFF8FAFC),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "⚪ ${status.message}",
+                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
+                    color = Color.Gray,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                )
+            }
+        }
+        is RealtimeStatus.AuthenticationRequired -> {
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = Color(0xFFF8FAFC),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "⚪ ${status.message}",
+                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
+                    color = Color.Gray,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                )
+            }
+        }
+        is RealtimeStatus.NetworkError -> {
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = Color(0xFFF8FAFC),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "⚪ ${status.message}",
+                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
+                    color = Color.Gray,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                )
+            }
+        }
+        is RealtimeStatus.NotRequested -> {}
     }
 }

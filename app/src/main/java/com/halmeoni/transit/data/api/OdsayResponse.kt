@@ -98,9 +98,21 @@ data class OdsaySubPath(
     @SerializedName("startName") val startName: String? = null,
     @SerializedName("startX") val startX: Double? = null,
     @SerializedName("startY") val startY: Double? = null,
+    @SerializedName("startID") val startID: Int? = null,
+    @SerializedName("startStationCityCode") val startStationCityCode: Int? = null,
+    @SerializedName("startStationProviderCode") val startStationProviderCode: Int? = null,
+    @SerializedName("startLocalStationID") val startLocalStationID: String? = null,
+    @SerializedName("startArsID") val startArsID: String? = null,
     @SerializedName("endName") val endName: String? = null,
     @SerializedName("endX") val endX: Double? = null,
     @SerializedName("endY") val endY: Double? = null,
+    @SerializedName("endID") val endID: Int? = null,
+    @SerializedName("endStationCityCode") val endStationCityCode: Int? = null,
+    @SerializedName("endStationProviderCode") val endStationProviderCode: Int? = null,
+    @SerializedName("endLocalStationID") val endLocalStationID: String? = null,
+    @SerializedName("endArsID") val endArsID: String? = null,
+    @SerializedName("way") val way: String? = null,
+    @SerializedName("wayCode") val wayCode: Int? = null,
     @SerializedName("lane") val lane: List<OdsayLane>? = null,
     @SerializedName("passStopList") val passStopList: OdsayPassStopList? = null
 )
@@ -108,7 +120,12 @@ data class OdsaySubPath(
 data class OdsayLane(
     @SerializedName("name") val name: String? = null,
     @SerializedName("busNo") val busNo: String? = null,
+    @SerializedName("busID") val busID: Int? = null,
+    @SerializedName("busLocalBlID") val busLocalBlID: String? = null,
+    @SerializedName("busCityCode") val busCityCode: Int? = null,
+    @SerializedName("busProviderCode") val busProviderCode: Int? = null,
     @SerializedName("subwayCode") val subwayCode: Int? = null,
+    @SerializedName("subwayCityCode") val subwayCityCode: Int? = null,
     @SerializedName("type") val type: Int? = null
 )
 
@@ -120,6 +137,10 @@ data class OdsayStation(
     @SerializedName("index") val index: Int? = null,
     @SerializedName("stationID") val stationID: Int? = null,
     @SerializedName("stationName") val stationName: String? = null,
+    @SerializedName("stationCityCode") val stationCityCode: Int? = null,
+    @SerializedName("stationProviderCode") val stationProviderCode: Int? = null,
+    @SerializedName("localStationID") val localStationID: String? = null,
+    @SerializedName("arsID") val arsID: String? = null,
     @SerializedName("x") val x: String? = null,
     @SerializedName("y") val y: String? = null
 )

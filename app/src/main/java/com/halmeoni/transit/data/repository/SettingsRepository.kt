@@ -13,6 +13,8 @@ class SettingsRepository(
         private const val PREF_KEY_HOME_LNG = "home_longitude"
         private const val PREF_KEY_HOME_ADDR = "home_address"
         private const val PREF_KEY_CUSTOM_API_KEY = "custom_odsay_api_key"
+        private const val PREF_KEY_BUS_API_KEY = "custom_public_data_bus_api_key"
+        private const val PREF_KEY_SUBWAY_API_KEY = "custom_seoul_subway_api_key"
 
         const val DEFAULT_PIN = "1234"
     }
@@ -77,5 +79,37 @@ class SettingsRepository(
 
     fun isApiKeyConfigured(): Boolean {
         return getApiKey().isNotBlank()
+    }
+
+    // --- Public Data Bus API Key (Seoul / Gyeonggi Bus Realtime) ---
+
+    fun getBusApiKey(): String {
+        return sharedPreferences.getString(PREF_KEY_BUS_API_KEY, "")?.trim() ?: ""
+    }
+
+    fun saveBusApiKey(apiKey: String) {
+        sharedPreferences.edit()
+            .putString(PREF_KEY_BUS_API_KEY, apiKey.trim())
+            .apply()
+    }
+
+    fun isBusApiKeyConfigured(): Boolean {
+        return getBusApiKey().isNotBlank()
+    }
+
+    // --- Seoul Subway Realtime API Key (Seoul Open Data) ---
+
+    fun getSubwayApiKey(): String {
+        return sharedPreferences.getString(PREF_KEY_SUBWAY_API_KEY, "")?.trim() ?: ""
+    }
+
+    fun saveSubwayApiKey(apiKey: String) {
+        sharedPreferences.edit()
+            .putString(PREF_KEY_SUBWAY_API_KEY, apiKey.trim())
+            .apply()
+    }
+
+    fun isSubwayApiKeyConfigured(): Boolean {
+        return getSubwayApiKey().isNotBlank()
     }
 }

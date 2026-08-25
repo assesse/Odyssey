@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.halmeoni.transit.data.location.LocationProvider
 import com.halmeoni.transit.data.repository.DestinationRepository
+import com.halmeoni.transit.data.repository.RealtimeTransitRepository
 import com.halmeoni.transit.data.repository.RouteRepository
 import com.halmeoni.transit.data.repository.RouteRepositoryError
 import com.halmeoni.transit.data.repository.SettingsRepository
@@ -11,7 +12,9 @@ import com.halmeoni.transit.data.repository.TransitRouteResult
 import com.halmeoni.transit.domain.ApiUsageTracker
 import com.halmeoni.transit.domain.RouteSelector
 import com.halmeoni.transit.domain.model.LocationResult
+import com.halmeoni.transit.domain.model.RealtimeStatus
 import com.halmeoni.transit.domain.model.RouteRequest
+import com.halmeoni.transit.domain.model.StepType
 import com.halmeoni.transit.domain.model.TransitRoute
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,7 +43,9 @@ sealed interface RouteUiState {
         val destinationTitle: String,
         val bestRoute: TransitRoute,
         val alternativeRoutes: List<TransitRoute> = emptyList(),
-        val currentRouteIndex: Int = 0
+        val currentRouteIndex: Int = 0,
+        val realtimeStatusMap: Map<Int, RealtimeStatus> = emptyMap(),
+        val isRealtimeLoading: Boolean = false
     ) : RouteUiState {
         val currentDisplayRoute: TransitRoute
             get() = if (currentRouteIndex == 0) bestRoute else alternativeRoutes.getOrElse(currentRouteIndex - 1) { bestRoute }
@@ -62,24 +67,25 @@ class RouteViewModel(
     private val destinationRepository: DestinationRepository,
     private val settingsRepository: SettingsRepository,
     private val apiUsageTracker: ApiUsageTracker? = null,
-    private val routeSelector: RouteSelector = RouteSelector()
+    private val routeSelector: RouteSelector = RouteSelector(),
+    private val realtimeTransitRepository: RealtimeTransitRepository = RealtimeTransitRepository(settingsRepository)
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<RouteUiState>(RouteUiState.Idle)
     val uiState: StateFlow<RouteUiState> = _uiState.asStateFlow()
 
     private var currentSearchJob: Job? = null
+    private var currentRealtimeJob: Job? = null
     private var lastRequest: RouteRequest? = null
 
     fun loadRoute(request: RouteRequest) {
-        // Prevent duplicate execution if already loading the same request
-        if (_uiState.value is RouteUiState.Loading && lastRequest == request) {
+        if (currentSearchJob?.isActive == true && lastRequest == request) {
             return
         }
 
-        // Cancel existing job on new request
-        currentSearchJob?.cancel()
         lastRequest = request
+        currentSearchJob?.cancel()
+        currentRealtimeJob?.cancel()
 
         val title = when (request) {
             is RouteRequest.GoHome -> "우리 집"
@@ -88,15 +94,25 @@ class RouteViewModel(
             }
         }
 
-        _uiState.value = RouteUiState.Loading(destinationTitle = title)
-
         currentSearchJob = viewModelScope.launch {
-            // 1. Verify Home Location configuration
+            _uiState.value = RouteUiState.Loading(destinationTitle = title)
+
+            // 1. Check API Key
+            if (!settingsRepository.isApiKeyConfigured()) {
+                _uiState.value = RouteUiState.Error(
+                    errorType = RouteErrorType.CONFIGURATION_REQUIRED,
+                    message = "보호자 설정에서 대중교통(ODsay) API 키를 먼저 등록해 주세요.",
+                    destinationTitle = title
+                )
+                return@launch
+            }
+
+            // 2. Check Home Location
             val home = settingsRepository.getHomeLocation()
             if (home == null) {
                 _uiState.value = RouteUiState.Error(
                     errorType = RouteErrorType.CONFIGURATION_REQUIRED,
-                    message = "집 위치가 아직 등록되지 않았어요.\n보호자 설정에서 집 위치를 먼저 등록해 주세요.",
+                    message = "보호자 설정에서 집 위치를 먼저 등록해 주세요.",
                     destinationTitle = title
                 )
                 return@launch
@@ -107,16 +123,15 @@ class RouteViewModel(
             val endLat: Double
             val endLng: Double
 
-            // 2. Resolve coordinates based on request type
             when (request) {
                 is RouteRequest.GoHome -> {
-                    val locationResult = locationProvider.getCurrentLocation(timeoutMs = 10_000L)
-                    when (locationResult) {
+                    endLat = home.latitude
+                    endLng = home.longitude
+
+                    when (val locResult = locationProvider.getCurrentLocation()) {
                         is LocationResult.Success -> {
-                            startLat = locationResult.latitude
-                            startLng = locationResult.longitude
-                            endLat = home.latitude
-                            endLng = home.longitude
+                            startLat = locResult.latitude
+                            startLng = locResult.longitude
                         }
                         is LocationResult.PermissionDenied -> {
                             _uiState.value = RouteUiState.Error(
@@ -129,7 +144,7 @@ class RouteViewModel(
                         is LocationResult.LocationServiceDisabled -> {
                             _uiState.value = RouteUiState.Error(
                                 errorType = RouteErrorType.LOCATION_SERVICE_DISABLED,
-                                message = "휴대전화의 위치 기능(GPS)을 켜 주세요.",
+                                message = "스마트폰의 위치(GPS) 기능을 켜주세요.",
                                 destinationTitle = title
                             )
                             return@launch
@@ -174,12 +189,16 @@ class RouteViewModel(
                     val routes = routeResult.routes
                     val selection = routeSelector.selectRoutes(routes)
                     if (selection.bestRoute != null) {
-                        _uiState.value = RouteUiState.Success(
+                        val successState = RouteUiState.Success(
                             destinationTitle = title,
                             bestRoute = selection.bestRoute,
                             alternativeRoutes = selection.alternativeRoutes,
                             currentRouteIndex = 0
                         )
+                        _uiState.value = successState
+
+                        // Enrich realtime information non-blockingly
+                        enrichRealtimeTransit(selection.bestRoute, forceRefresh = false)
                     } else {
                         _uiState.value = RouteUiState.Error(
                             errorType = RouteErrorType.ROUTE_NOT_FOUND,
@@ -200,66 +219,122 @@ class RouteViewModel(
         }
     }
 
-    private fun mapRepositoryErrorToUi(error: RouteRepositoryError): Pair<RouteErrorType, String> {
-        return when (error) {
-            is RouteRepositoryError.ApiKeyNotConfigured -> {
-                RouteErrorType.CONFIGURATION_REQUIRED to "대중교통 길찾기 API 키가 설정되지 않았어요.\n보호자 설정에서 ODsay API 키를 등록해 주세요."
+    fun enrichRealtimeTransit(route: TransitRoute, forceRefresh: Boolean = false) {
+        currentRealtimeJob?.cancel()
+
+        currentRealtimeJob = viewModelScope.launch {
+            val currentState = _uiState.value
+            if (currentState !is RouteUiState.Success) return@launch
+
+            // Initialize loading statuses for bus/subway steps
+            val initialStatusMap = currentState.realtimeStatusMap.toMutableMap()
+            route.steps.forEachIndexed { index, step ->
+                if (step.type == StepType.BUS || step.type == StepType.SUBWAY) {
+                    initialStatusMap[index] = RealtimeStatus.Loading
+                }
             }
-            is RouteRepositoryError.AuthenticationFailed -> {
-                RouteErrorType.CONFIGURATION_REQUIRED to "대중교통 API 키 인증에 실패했어요.\n보호자 설정에서 키를 다시 확인해 주세요."
+            _uiState.value = currentState.copy(
+                realtimeStatusMap = initialStatusMap,
+                isRealtimeLoading = true
+            )
+
+            // Fetch realtime arrival for each transit step
+            val updatedMap = initialStatusMap.toMutableMap()
+            for ((index, step) in route.steps.withIndex()) {
+                if (step.type == StepType.BUS || step.type == StepType.SUBWAY) {
+                    val status = try {
+                        realtimeTransitRepository.getRealtimeArrival(step, forceRefresh = forceRefresh)
+                    } catch (e: Exception) {
+                        RealtimeStatus.NetworkError("실시간 정보 확인 불가")
+                    }
+                    updatedMap[index] = status
+
+                    val latestState = _uiState.value
+                    if (latestState is RouteUiState.Success) {
+                        _uiState.value = latestState.copy(realtimeStatusMap = updatedMap.toMap())
+                    }
+                }
             }
-            is RouteRepositoryError.NoStartStation -> {
-                RouteErrorType.ROUTE_NOT_FOUND to "출발지 근처에서 이용할 수 있는\n버스나 지하철을 찾지 못했어요."
+
+            val finalState = _uiState.value
+            if (finalState is RouteUiState.Success) {
+                _uiState.value = finalState.copy(isRealtimeLoading = false)
             }
-            is RouteRepositoryError.NoEndStation -> {
-                RouteErrorType.ROUTE_NOT_FOUND to "목적지 근처에서 이용할 수 있는\n버스나 지하철을 찾지 못했어요."
-            }
-            is RouteRepositoryError.NoStartAndEndStation -> {
-                RouteErrorType.ROUTE_NOT_FOUND to "출발지와 목적지 근처에서\n이용할 수 있는 대중교통을 찾지 못했어요."
-            }
-            is RouteRepositoryError.UnsupportedArea -> {
-                RouteErrorType.ROUTE_NOT_FOUND to "이 지역은 현재 길찾기를 지원하지 않아요."
-            }
-            is RouteRepositoryError.TooClose -> {
-                RouteErrorType.ROUTE_NOT_FOUND to "목적지가 아주 가까이에 있어요.\n대중교통 길찾기가 필요하지 않을 수 있어요."
-            }
-            is RouteRepositoryError.NoRoute -> {
-                RouteErrorType.ROUTE_NOT_FOUND to "지금 이용할 수 있는 대중교통 경로를 찾지 못했어요."
-            }
-            is RouteRepositoryError.ServerError,
-            is RouteRepositoryError.NetworkError,
-            is RouteRepositoryError.Timeout -> {
-                RouteErrorType.NETWORK_ERROR to "길찾기 서버에 연결하지 못했어요.\n잠시 후 다시 시도해 주세요."
-            }
-            is RouteRepositoryError.InvalidParameter,
-            is RouteRepositoryError.MissingParameter,
-            is RouteRepositoryError.Unknown -> {
-                RouteErrorType.UNKNOWN_ERROR to "경로를 찾는 중 오류가 발생했어요.\n잠시 후 다시 시도해 주세요."
-            }
+        }
+    }
+
+    fun refreshRealtime() {
+        val state = _uiState.value
+        if (state is RouteUiState.Success) {
+            enrichRealtimeTransit(state.currentDisplayRoute, forceRefresh = true)
         }
     }
 
     fun toggleNextRoute() {
         val currentState = _uiState.value
-        if (currentState is RouteUiState.Success) {
-            val totalRoutes = currentState.totalRouteCount
-            if (totalRoutes > 1) {
-                val nextIndex = (currentState.currentRouteIndex + 1) % totalRoutes
-                _uiState.value = currentState.copy(currentRouteIndex = nextIndex)
-            }
+        if (currentState is RouteUiState.Success && currentState.totalRouteCount > 1) {
+            val nextIndex = (currentState.currentRouteIndex + 1) % currentState.totalRouteCount
+            val nextState = currentState.copy(
+                currentRouteIndex = nextIndex,
+                realtimeStatusMap = emptyMap(),
+                isRealtimeLoading = false
+            )
+            _uiState.value = nextState
+            enrichRealtimeTransit(nextState.currentDisplayRoute, forceRefresh = false)
         }
     }
 
     fun retry() {
-        val req = lastRequest
-        if (req != null) {
-            _uiState.value = RouteUiState.Idle
-            loadRoute(req)
-        }
+        lastRequest?.let { loadRoute(it) }
+    }
+
+    fun cancelSearch() {
+        currentSearchJob?.cancel()
+        currentRealtimeJob?.cancel()
+        _uiState.value = RouteUiState.Idle
     }
 
     override fun onCleared() {
         super.onCleared()
         currentSearchJob?.cancel()
+        currentRealtimeJob?.cancel()
+    }
+
+    private fun mapRepositoryErrorToUi(error: RouteRepositoryError): Pair<RouteErrorType, String> {
+        return when (error) {
+            is RouteRepositoryError.ApiKeyNotConfigured -> {
+                Pair(RouteErrorType.CONFIGURATION_REQUIRED, "보호자 설정에서 ODsay API 키를 먼저 등록해 주세요.")
+            }
+            is RouteRepositoryError.AuthenticationFailed -> {
+                Pair(RouteErrorType.CONFIGURATION_REQUIRED, "ODsay API 키 인증에 실패했습니다.\n보호자 설정에서 키를 확인해 주세요.")
+            }
+            is RouteRepositoryError.InvalidParameter, is RouteRepositoryError.MissingParameter -> {
+                Pair(RouteErrorType.UNKNOWN_ERROR, "경로 요청 정보가 올바르지 않습니다.")
+            }
+            is RouteRepositoryError.NoStartStation, is RouteRepositoryError.NoEndStation, is RouteRepositoryError.NoStartAndEndStation -> {
+                Pair(RouteErrorType.ROUTE_NOT_FOUND, "출발지 또는 도착지 주변 정류장을 찾을 수 없습니다.")
+            }
+            is RouteRepositoryError.UnsupportedArea -> {
+                Pair(RouteErrorType.ROUTE_NOT_FOUND, "대중교통 정보가 지원되지 않는 지역입니다.")
+            }
+            is RouteRepositoryError.TooClose -> {
+                Pair(RouteErrorType.ROUTE_NOT_FOUND, "출발지와 도착지가 너무 가깝습니다.")
+            }
+            is RouteRepositoryError.NoRoute -> {
+                Pair(RouteErrorType.ROUTE_NOT_FOUND, "지금 이용할 수 있는 대중교통 경로가 없어요.")
+            }
+            is RouteRepositoryError.ServerError -> {
+                Pair(RouteErrorType.NETWORK_ERROR, "대중교통 서버 응답 오류가 발생했어요.\n잠시 후 다시 시도해 주세요.")
+            }
+            is RouteRepositoryError.NetworkError -> {
+                Pair(RouteErrorType.NETWORK_ERROR, "인터넷 연결을 확인하고 다시 시도해 주세요.")
+            }
+            is RouteRepositoryError.Timeout -> {
+                Pair(RouteErrorType.NETWORK_ERROR, "대중교통 서버 응답 시간이 초과되었습니다.\n잠시 후 다시 시도해 주세요.")
+            }
+            is RouteRepositoryError.Unknown -> {
+                Pair(RouteErrorType.UNKNOWN_ERROR, "경로를 찾지 못했어요: ${error.message ?: "알 수 없는 오류"}")
+            }
+        }
     }
 }

@@ -42,6 +42,14 @@ data class AdminSettingsState(
     val isApiKeyConfigured: Boolean = false,
     val apiKeyError: String? = null,
 
+    // Public Data Bus API Key (Seoul/Gyeonggi)
+    val busApiKeyInput: String = "",
+    val isBusApiKeyConfigured: Boolean = false,
+
+    // Seoul Subway API Key
+    val subwayApiKeyInput: String = "",
+    val isSubwayApiKeyConfigured: Boolean = false,
+
     // PIN change fields
     val newPinInput: String = "",
     val confirmPinInput: String = "",
@@ -77,6 +85,10 @@ class AdminViewModel(
         val count = apiUsageTracker.getUsageCount()
         val apiKey = settingsRepository.getApiKey()
         val isApiKeyOk = settingsRepository.isApiKeyConfigured()
+        val busApiKey = settingsRepository.getBusApiKey()
+        val isBusApiKeyOk = settingsRepository.isBusApiKeyConfigured()
+        val subwayApiKey = settingsRepository.getSubwayApiKey()
+        val isSubwayApiKeyOk = settingsRepository.isSubwayApiKeyConfigured()
 
         _settings.value = AdminSettingsState(
             homeAddressInput = home?.address ?: "",
@@ -86,6 +98,10 @@ class AdminViewModel(
             destinations = dests,
             apiKeyInput = apiKey,
             isApiKeyConfigured = isApiKeyOk,
+            busApiKeyInput = busApiKey,
+            isBusApiKeyConfigured = isBusApiKeyOk,
+            subwayApiKeyInput = subwayApiKey,
+            isSubwayApiKeyConfigured = isSubwayApiKeyOk,
             apiCallCount = count
         )
     }
@@ -142,12 +158,26 @@ class AdminViewModel(
         )
     }
 
-    // --- ODsay API Key Handling ---
+    // --- API Key Handlers ---
 
     fun onApiKeyChanged(key: String) {
         _settings.value = _settings.value.copy(
             apiKeyInput = key,
             apiKeyError = null,
+            saveErrorMessage = null
+        )
+    }
+
+    fun onBusApiKeyChanged(key: String) {
+        _settings.value = _settings.value.copy(
+            busApiKeyInput = key,
+            saveErrorMessage = null
+        )
+    }
+
+    fun onSubwayApiKeyChanged(key: String) {
+        _settings.value = _settings.value.copy(
+            subwayApiKeyInput = key,
             saveErrorMessage = null
         )
     }
@@ -304,7 +334,6 @@ class AdminViewModel(
         val editId = state.editingDestId
 
         if (editId != null) {
-            // Edit existing destination (preserve UUID and order)
             val index = currentList.indexOfFirst { it.id == editId }
             if (index != -1) {
                 val existing = currentList[index]
@@ -318,7 +347,6 @@ class AdminViewModel(
                 destinationRepository.saveDestination(updated)
             }
         } else {
-            // Add new destination (check max 6 limit)
             if (currentList.size >= 6) {
                 _settings.value = state.copy(destGeneralError = "최대 6개까지만 등록할 수 있습니다.")
                 return false
@@ -374,7 +402,7 @@ class AdminViewModel(
         }
     }
 
-    // --- Save All Settings (Home Location & PIN & API Key) ---
+    // --- Save All Settings ---
 
     fun saveAllSettings(): Boolean {
         val state = _settings.value
@@ -384,6 +412,8 @@ class AdminViewModel(
         val newPin = state.newPinInput.trim()
         val confirmPin = state.confirmPinInput.trim()
         val apiKey = state.apiKeyInput.trim()
+        val busApiKey = state.busApiKeyInput.trim()
+        val subwayApiKey = state.subwayApiKeyInput.trim()
 
         var hasError = false
         var addrErr: String? = null
@@ -419,7 +449,7 @@ class AdminViewModel(
             hasError = true
         }
 
-        // 2. PIN Change Validation (optional unless user entered digits)
+        // 2. PIN Change Validation
         if (newPin.isNotEmpty() || confirmPin.isNotEmpty()) {
             if (newPin.length != 4 || !newPin.all { it.isDigit() }) {
                 pinErr = "새 PIN은 숫자 4자리여야 합니다."
@@ -454,9 +484,19 @@ class AdminViewModel(
             settingsRepository.saveApiKey(apiKey)
         }
 
+        if (busApiKey.isNotEmpty()) {
+            settingsRepository.saveBusApiKey(busApiKey)
+        }
+
+        if (subwayApiKey.isNotEmpty()) {
+            settingsRepository.saveSubwayApiKey(subwayApiKey)
+        }
+
         _settings.value = state.copy(
             isHomeConfigured = true,
             isApiKeyConfigured = settingsRepository.isApiKeyConfigured(),
+            isBusApiKeyConfigured = settingsRepository.isBusApiKeyConfigured(),
+            isSubwayApiKeyConfigured = settingsRepository.isSubwayApiKeyConfigured(),
             homeAddressError = null,
             homeLatError = null,
             homeLngError = null,

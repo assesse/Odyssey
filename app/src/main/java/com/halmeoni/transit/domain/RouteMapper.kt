@@ -97,7 +97,18 @@ class RouteMapper {
             stationCount = subPath.stationCount ?: 0,
             passStops = passStops,
             lineType = firstLane?.type,
-            subwayCode = firstLane?.subwayCode
+            subwayCode = firstLane?.subwayCode,
+            startStationId = subPath.startID,
+            startLocalStationId = subPath.startLocalStationID,
+            startArsId = subPath.startArsID,
+            startCityCode = subPath.startStationCityCode ?: firstLane?.busCityCode,
+            startProviderCode = subPath.startStationProviderCode ?: firstLane?.busProviderCode,
+            busId = firstLane?.busID,
+            busLocalRouteId = firstLane?.busLocalBlID,
+            subwayWayCode = subPath.wayCode,
+            endStationId = subPath.endID,
+            endLocalStationId = subPath.endLocalStationID,
+            endArsId = subPath.endArsID
         )
     }
 }

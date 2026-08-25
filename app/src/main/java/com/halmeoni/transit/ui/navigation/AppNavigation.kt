@@ -18,6 +18,7 @@ import com.halmeoni.transit.data.location.FusedLocationProvider
 import com.halmeoni.transit.data.location.LocationProvider
 import com.halmeoni.transit.data.repository.DestinationRepository
 import com.halmeoni.transit.data.repository.OdsayRouteRepository
+import com.halmeoni.transit.data.repository.RealtimeTransitRepository
 import com.halmeoni.transit.data.repository.SettingsRepository
 import com.halmeoni.transit.domain.ApiUsageTracker
 import com.halmeoni.transit.domain.model.RouteRequest
@@ -58,6 +59,9 @@ class AppViewModelFactory(private val context: Context) : ViewModelProvider.Fact
     val apiUsageTracker by lazy { ApiUsageTracker(sharedPrefs) }
     val locationProvider by lazy {
         FusedLocationProvider(context, LocationServices.getFusedLocationProviderClient(context))
+    }
+    val realtimeTransitRepository by lazy {
+        RealtimeTransitRepository(settingsRepository)
     }
 
     private val odsayApiService by lazy {
@@ -101,7 +105,8 @@ class AppViewModelFactory(private val context: Context) : ViewModelProvider.Fact
                     locationProvider = locationProvider,
                     destinationRepository = destinationRepository,
                     settingsRepository = settingsRepository,
-                    apiUsageTracker = apiUsageTracker
+                    apiUsageTracker = apiUsageTracker,
+                    realtimeTransitRepository = realtimeTransitRepository
                 ) as T
             }
             modelClass.isAssignableFrom(AdminViewModel::class.java) -> {

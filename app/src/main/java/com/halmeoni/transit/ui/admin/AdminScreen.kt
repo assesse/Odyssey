@@ -192,7 +192,6 @@ fun AdminScreen(
                                         .fillMaxWidth()
                                         .padding(14.dp)
                                 ) {
-                                    // 1단: 목적지 이름 및 상세 정보 (전체 가로폭 확보)
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         verticalAlignment = Alignment.CenterVertically
@@ -223,7 +222,6 @@ fun AdminScreen(
                                     HorizontalDivider(color = Color(0xFFE0E0E0))
                                     Spacer(modifier = Modifier.height(8.dp))
 
-                                    // 2단: 조작 버튼 행 (우측 정렬)
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.End,
@@ -265,7 +263,6 @@ fun AdminScreen(
                         }
                     }
 
-                    // ➕ 새 목적지 추가 버튼 (전체 가로폭으로 시원하게 배치하여 세로 기둥 방지)
                     if (settings.destinations.size < 6) {
                         Spacer(modifier = Modifier.height(10.dp))
                         Button(
@@ -286,7 +283,7 @@ fun AdminScreen(
                 }
             }
 
-            // 3. ODsay API Key Card
+            // 3. ODsay API Key Card (Primary Path Finding)
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -299,8 +296,8 @@ fun AdminScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "🌐 ODsay API 키 설정",
-                            style = MaterialTheme.typography.titleMedium.copy(fontSize = 20.sp),
+                            text = "🌐 ODsay 경로탐색 키",
+                            style = MaterialTheme.typography.titleMedium.copy(fontSize = 19.sp),
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -309,7 +306,7 @@ fun AdminScreen(
                             color = if (settings.isApiKeyConfigured) Color(0xFFE8F5E9) else Color(0xFFFFEBEE)
                         ) {
                             Text(
-                                text = if (settings.isApiKeyConfigured) "● 키 설정됨" else "● 키 미설정",
+                                text = if (settings.isApiKeyConfigured) "● 설정됨" else "● 미설정",
                                 style = MaterialTheme.typography.labelLarge.copy(fontSize = 13.sp),
                                 fontWeight = FontWeight.Bold,
                                 color = if (settings.isApiKeyConfigured) HomeButtonGreen else ActionRed,
@@ -323,12 +320,12 @@ fun AdminScreen(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
-                        text = "대중교통 길찾기를 위해 ODsay API 키가 필요합니다. 발급받은 키를 아래에 입력하고 하단 '설정 저장하기'를 눌러주세요.",
+                        text = "대중교통 경로 탐색을 위한 필수 인증키입니다.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.Gray
                     )
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
 
                     OutlinedTextField(
                         value = settings.apiKeyInput,
@@ -340,7 +337,115 @@ fun AdminScreen(
                 }
             }
 
-            // 4. Security (PIN Change) Card
+            // 4. Realtime Public Data Bus API Key Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "🚌 실시간 버스 인증키",
+                            style = MaterialTheme.typography.titleMedium.copy(fontSize = 19.sp),
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = if (settings.isBusApiKeyConfigured) Color(0xFFE8F5E9) else Color(0xFFFFEBEE)
+                        ) {
+                            Text(
+                                text = if (settings.isBusApiKeyConfigured) "● 설정됨" else "● 미설정",
+                                style = MaterialTheme.typography.labelLarge.copy(fontSize = 13.sp),
+                                fontWeight = FontWeight.Bold,
+                                color = if (settings.isBusApiKeyConfigured) HomeButtonGreen else ActionRed,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "서울/경기 실시간 버스 도착정보(공공데이터포털 일반 인증키)입니다.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Gray
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    OutlinedTextField(
+                        value = settings.busApiKeyInput,
+                        onValueChange = { viewModel.onBusApiKeyChanged(it) },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("공공데이터 버스 인증키 (선택)") },
+                        singleLine = true
+                    )
+                }
+            }
+
+            // 5. Realtime Seoul Subway API Key Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "🚇 실시간 지하철 인증키",
+                            style = MaterialTheme.typography.titleMedium.copy(fontSize = 19.sp),
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = if (settings.isSubwayApiKeyConfigured) Color(0xFFE8F5E9) else Color(0xFFFFEBEE)
+                        ) {
+                            Text(
+                                text = if (settings.isSubwayApiKeyConfigured) "● 설정됨" else "● 미설정",
+                                style = MaterialTheme.typography.labelLarge.copy(fontSize = 13.sp),
+                                fontWeight = FontWeight.Bold,
+                                color = if (settings.isSubwayApiKeyConfigured) HomeButtonGreen else ActionRed,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "수도권 전철 실시간 도착정보(서울 열린데이터광장 인증키)입니다.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Gray
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    OutlinedTextField(
+                        value = settings.subwayApiKeyInput,
+                        onValueChange = { viewModel.onSubwayApiKeyChanged(it) },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("서울 지하철 인증키 (선택)") },
+                        singleLine = true
+                    )
+                }
+            }
+
+            // 6. Security (PIN Change) Card
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -397,7 +502,7 @@ fun AdminScreen(
                 }
             }
 
-            // 5. API Usage Statistics
+            // 7. API Usage Statistics
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -427,7 +532,7 @@ fun AdminScreen(
                 )
             }
 
-            // 6. Save Button
+            // 8. Save Button
             BigButton(
                 text = "💾 설정 저장하기",
                 onClick = {

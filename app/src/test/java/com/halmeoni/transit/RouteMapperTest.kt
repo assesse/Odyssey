@@ -2,6 +2,7 @@ package com.halmeoni.transit
 
 import com.google.gson.GsonBuilder
 import com.halmeoni.transit.data.api.OdsayLane
+import com.halmeoni.transit.data.api.OdsayPassStopList
 import com.halmeoni.transit.data.api.OdsayPath
 import com.halmeoni.transit.data.api.OdsayPathInfo
 import com.halmeoni.transit.data.api.OdsayResponse
@@ -70,14 +71,18 @@ class RouteMapperTest {
                                 "stationCount": 5,
                                 "startName": "시청앞",
                                 "endName": "종로2가",
+                                "startID": 11111,
+                                "startLocalStationID": "100000001",
+                                "startArsID": "01001",
+                                "startStationCityCode": 1000,
                                 "lane": [
-                                    { "name": "101번", "busNo": "101" }
+                                    { "name": "101번", "busNo": "101", "busID": 1001, "busLocalBlID": "100100001", "type": 11 }
                                 ],
                                 "passStopList": {
                                     "stations": [
-                                        { "index": 1, "stationName": "시청앞" },
-                                        { "index": 2, "stationName": "을지로입구" },
-                                        { "index": 3, "stationName": "종로2가" }
+                                        { "index": 1, "stationName": "시청앞", "stationID": 11111 },
+                                        { "index": 2, "stationName": "을지로입구", "stationID": 11112 },
+                                        { "index": 3, "stationName": "종로2가", "stationID": 11113 }
                                     ]
                                 }
                             },
@@ -111,17 +116,64 @@ class RouteMapperTest {
         assertEquals(235.45, route.steps[0].distance, 0.001)
         assertEquals(4, route.steps[0].sectionTime)
 
-        // Step 2: Bus
-        assertEquals(StepType.BUS, route.steps[1].type)
-        assertEquals("101", route.steps[1].routeName)
-        assertEquals("시청앞", route.steps[1].startName)
-        assertEquals("종로2가", route.steps[1].endName)
-        assertEquals(3520.55, route.steps[1].distance, 0.001)
-        assertEquals(3, route.steps[1].passStops.size)
+        // Step 2: Bus (Preserves Realtime Metadata)
+        val busStep = route.steps[1]
+        assertEquals(StepType.BUS, busStep.type)
+        assertEquals("101", busStep.routeName)
+        assertEquals("시청앞", busStep.startName)
+        assertEquals("종로2가", busStep.endName)
+        assertEquals(3520.55, busStep.distance, 0.001)
+        assertEquals(3, busStep.passStops.size)
+        assertEquals(11, busStep.lineType)
+        assertEquals(11111, busStep.startStationId)
+        assertEquals("100000001", busStep.startLocalStationId)
+        assertEquals("01001", busStep.startArsId)
+        assertEquals(1000, busStep.startCityCode)
+        assertEquals(1001, busStep.busId)
+        assertEquals("100100001", busStep.busLocalRouteId)
 
         // Step 3: Walk
         assertEquals(StepType.WALK, route.steps[2].type)
         assertEquals(364.85, route.steps[2].distance, 0.001)
+    }
+
+    @Test
+    fun mapToDomain_preservesSubwayMetadataForRealtime() {
+        val path = OdsayPath(
+            pathType = 1,
+            info = OdsayPathInfo(totalTime = 20, totalWalk = 100, trafficDistance = 5000.0),
+            subPath = listOf(
+                OdsaySubPath(
+                    trafficType = 1,
+                    distance = 5000.0,
+                    sectionTime = 15,
+                    startName = "경복궁역",
+                    endName = "종로3가역",
+                    startID = 327,
+                    endID = 329,
+                    wayCode = 2,
+                    lane = listOf(OdsayLane(name = "수도권 3호선", subwayCode = 3)),
+                    passStopList = OdsayPassStopList(
+                        stations = listOf(
+                            OdsayStation(index = 1, stationName = "경복궁역"),
+                            OdsayStation(index = 2, stationName = "안국역"),
+                            OdsayStation(index = 3, stationName = "종로3가역")
+                        )
+                    )
+                )
+            )
+        )
+        val response = OdsayResponse(result = OdsayResult(path = listOf(path)))
+        val routes = mapper.mapToDomain(response)
+
+        assertEquals(1, routes.size)
+        val step = routes[0].steps[0]
+        assertEquals(StepType.SUBWAY, step.type)
+        assertEquals(3, step.subwayCode)
+        assertEquals(327, step.startStationId)
+        assertEquals(329, step.endStationId)
+        assertEquals(2, step.subwayWayCode)
+        assertEquals("안국역", step.passStops[1])
     }
 
     @Test
@@ -139,7 +191,6 @@ class RouteMapperTest {
         val response = OdsayResponse(result = OdsayResult(path = listOf(path)))
 
         val routes = mapper.mapToDomain(response)
-        // Must be rejected from recommendations because of unknown vehicle type
         assertTrue(routes.isEmpty())
     }
 
